@@ -1,0 +1,1824 @@
+{
+  "source": "output_ppt\\CCTV-17频道收视日报 0210 demo（简版）.pptx",
+  "slideWidthCm": 33.867,
+  "slideHeightCm": 19.05,
+  "slides": [
+    {
+      "slideNo": 1,
+      "textShapes": [
+        {
+          "shapeIndex": 0,
+          "name": "标题",
+          "type": "text",
+          "leftCm": 4.108,
+          "topCm": 4.3,
+          "widthCm": 26.3,
+          "heightCm": 7.303,
+          "text": "2026年2月10日\u000b农业农村频道收视日报",
+          "paragraphs": [
+            {
+              "text": "2026年2月10日\u000b农业农村频道收视日报",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "2026",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": null,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "年",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": null,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "2",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": null,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "月",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": null,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "10",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": null,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "日",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": null,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "农业农村",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": null,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "频道收视日报",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": null,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 1,
+          "name": "署名",
+          "type": "text",
+          "leftCm": 6.526,
+          "topCm": 12.701,
+          "widthCm": 20.812,
+          "heightCm": 3.271,
+          "text": "统筹策划部 2026年第41期",
+          "paragraphs": [
+            {
+              "text": "统筹策划部 2026年第41期",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "统筹策划部",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 24.0,
+                  "bold": true,
+                  "colorRGB": null
+                },
+                {
+                  "text": " 2026",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 24.0,
+                  "bold": true,
+                  "colorRGB": null
+                },
+                {
+                  "text": "年第",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 24.0,
+                  "bold": true,
+                  "colorRGB": null
+                },
+                {
+                  "text": "41",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 24.0,
+                  "bold": true,
+                  "colorRGB": null
+                },
+                {
+                  "text": "期",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 24.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "geometryShapes": []
+    },
+    {
+      "slideNo": 2,
+      "textShapes": [
+        {
+          "shapeIndex": 0,
+          "name": "文本占位符 1",
+          "type": "text",
+          "leftCm": 1.771,
+          "topCm": 2.611,
+          "widthCm": 30.309,
+          "heightCm": 14.305,
+          "text": "2月10日，频道市场份额为0.756%，较前一个月均值基本持平；收视率0.044%，基本持平；上星频道排名第19位，较前一日上升3位，央视台组内排名第12位，与前一日保持不变。\n\n2月10日，对比前一个月均值，电视剧市场份额0.930%，下降19%，非电视剧市场份额0.645%，提升16%。\n\n2月10日，早间节目及上午剧场收视率提升，9:24《农人秀-家乡年货开箱记》为上午剧场提供高收视入点；午间节目至黄金剧场收视率下滑，《六姊妹》后两集表现不佳，18:00《中国三农报道》将收视平台拉升至平均水平，但后续加播《振兴路上新观察》未能有效承接观众；黄金剧场时间因编排调整后移，晚间节目有效承接高收视入点，晚间及夜间节目收视提升显著。\n",
+          "paragraphs": [
+            {
+              "text": "2月10日，频道市场份额为0.756%，较前一个月均值基本持平；收视率0.044%，基本持平；上星频道排名第19位，较前一日上升3位，央视台组内排名第12位，与前一日保持不变。",
+              "alignment": "JUSTIFY (4)",
+              "runs": [
+                {
+                  "text": "2月10日，频道市场份额为0.756%，较前一个月均值基本持平；收视率0.044%，基本持平；上星频道排名第19位，较前一日上升3位，央视台组内排名第12位，与前一日保持不变。",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 20.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            },
+            {
+              "text": "",
+              "alignment": "JUSTIFY (4)",
+              "runs": []
+            },
+            {
+              "text": "2月10日，对比前一个月均值，电视剧市场份额0.930%，下降19%，非电视剧市场份额0.645%，提升16%。",
+              "alignment": "JUSTIFY (4)",
+              "runs": [
+                {
+                  "text": "2月10日，对比前一个月均值，电视剧市场份额0.930%，下降19%，非电视剧市场份额0.645%，提升16%。",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 20.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            },
+            {
+              "text": "",
+              "alignment": "JUSTIFY (4)",
+              "runs": []
+            },
+            {
+              "text": "2月10日，早间节目及上午剧场收视率提升，9:24《农人秀-家乡年货开箱记》为上午剧场提供高收视入点；午间节目至黄金剧场收视率下滑，《六姊妹》后两集表现不佳，18:00《中国三农报道》将收视平台拉升至平均水平，但后续加播《振兴路上新观察》未能有效承接观众；黄金剧场时间因编排调整后移，晚间节目有效承接高收视入点，晚间及夜间节目收视提升显著。",
+              "alignment": "JUSTIFY (4)",
+              "runs": [
+                {
+                  "text": "2月10日，早间节目及上午剧场收视率提升，",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 20.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "9:24",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 20.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "《",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 20.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "农人秀",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 20.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "-",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 20.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "家乡年货开箱记》为上午剧场提供高收视入点；午间节目至黄金剧场收视率下滑，《六姊妹》后两集表现不佳，",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 20.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "18:00",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 20.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "《中国三农报道》将收视平台拉升至平均水平，但后续加播《振兴路上新观察》未能有效承接观众；黄金剧场时间因编排调整后移，晚间节目有效承接高收视入点，晚间及",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 20.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "夜间节目收视提升显著。",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 20.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            },
+            {
+              "text": "",
+              "alignment": "JUSTIFY (4)",
+              "runs": []
+            }
+          ]
+        },
+        {
+          "shapeIndex": 1,
+          "name": "矩形 2",
+          "type": "text",
+          "leftCm": 1.931,
+          "topCm": 17.297,
+          "widthCm": 26.361,
+          "heightCm": 1.279,
+          "text": "备注：节目名称为监播系统自动抓取。为方便查阅，首播栏目收视数据中不再体现短节目（5分钟及以内）。\n           对比前期数据日期：前推1个月（30天）均值",
+          "paragraphs": [
+            {
+              "text": "备注：节目名称为监播系统自动抓取。为方便查阅，首播栏目收视数据中不再体现短节目（5分钟及以内）。",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "备注：节目名称为监播系统自动抓取。为方便查阅，首播栏目收视数据中不再体现短节目（",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "5",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "分钟及以内）。",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            },
+            {
+              "text": "           对比前期数据日期：前推1个月（30天）均值",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "           对比前期数据日期：前推",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "1",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "个月（",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "30",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "天）均值",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 2,
+          "name": "标题 10",
+          "type": "text",
+          "leftCm": 1.93,
+          "topCm": 0.612,
+          "widthCm": 30.0,
+          "heightCm": 2.0,
+          "text": "  收视速报",
+          "paragraphs": [
+            {
+              "text": "  收视速报",
+              "alignment": "LEFT (1)",
+              "runs": [
+                {
+                  "text": "  ",
+                  "fontName": null,
+                  "fontSizePt": 32.0,
+                  "bold": true,
+                  "colorRGB": null
+                },
+                {
+                  "text": "收视速报",
+                  "fontName": null,
+                  "fontSizePt": 32.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "geometryShapes": []
+    },
+    {
+      "slideNo": 3,
+      "textShapes": [
+        {
+          "shapeIndex": 0,
+          "name": "文本占位符 1",
+          "type": "text",
+          "leftCm": 1.64,
+          "topCm": 2.858,
+          "widthCm": 30.852,
+          "heightCm": 2.54,
+          "text": "2月10日，频道市场份额为0.756%，较前一个月均值基本持平；平均到达率和平均忠实度分别下降8%，提升6%。\n2月10日，所有频道收视率为5.78%，较前一个月均值基本持平，CCTV-17收视率0.044%，较前一个月均值基本持平。",
+          "paragraphs": [
+            {
+              "text": "2月10日，频道市场份额为0.756%，较前一个月均值基本持平；平均到达率和平均忠实度分别下降8%，提升6%。",
+              "alignment": "JUSTIFY (4)",
+              "runs": [
+                {
+                  "text": "2月10日，频道市场份额为0.756%，较前一个月均值基本持平；平均到达率和平均忠实度分别下降8%，提升6%。",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": null,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            },
+            {
+              "text": "2月10日，所有频道收视率为5.78%，较前一个月均值基本持平，CCTV-17收视率0.044%，较前一个月均值基本持平。",
+              "alignment": "JUSTIFY (4)",
+              "runs": [
+                {
+                  "text": "2月10日，所有频道收视率为5.78%，较前一个月均值基本持平，CCTV-17收视率0.044%，较前一个月均值基本持平。",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": null,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 2,
+          "name": "文本框 19",
+          "type": "text",
+          "leftCm": 3.821,
+          "topCm": 15.994,
+          "widthCm": 3.45,
+          "heightCm": 0.937,
+          "text": "市场份额%",
+          "paragraphs": [
+            {
+              "text": "市场份额%",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "市场份额",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 16.0,
+                  "bold": true,
+                  "colorRGB": null
+                },
+                {
+                  "text": "%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 16.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 3,
+          "name": "文本框 24",
+          "type": "text",
+          "leftCm": 10.278,
+          "topCm": 8.197,
+          "widthCm": 2.766,
+          "heightCm": 1.621,
+          "text": "所有频道\n收视率%",
+          "paragraphs": [
+            {
+              "text": "所有频道",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "所有频道",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 16.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            },
+            {
+              "text": "收视率%",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "收视率",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 16.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 16.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 4,
+          "name": "文本框 25",
+          "type": "text",
+          "leftCm": 10.347,
+          "topCm": 15.272,
+          "widthCm": 3.235,
+          "heightCm": 1.621,
+          "text": "CCTV-17\n收视率%",
+          "paragraphs": [
+            {
+              "text": "CCTV-17",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "CCTV-17",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 16.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            },
+            {
+              "text": "收视率%",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "收视率",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 16.0,
+                  "bold": true,
+                  "colorRGB": null
+                },
+                {
+                  "text": "%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 16.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 11,
+          "name": "标题 10",
+          "type": "text",
+          "leftCm": 1.93,
+          "topCm": 0.612,
+          "widthCm": 30.0,
+          "heightCm": 2.0,
+          "text": "2月10日，市场份额0.756%，较前一个月均值基本持平",
+          "paragraphs": [
+            {
+              "text": "2月10日，市场份额0.756%，较前一个月均值基本持平",
+              "alignment": "LEFT (1)",
+              "runs": [
+                {
+                  "text": "2",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "月",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "10",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "日，市场份额0.756%，较前一个月均值基本持平",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "geometryShapes": []
+    },
+    {
+      "slideNo": 4,
+      "textShapes": [
+        {
+          "shapeIndex": 2,
+          "name": "文本框 10",
+          "type": "text",
+          "leftCm": 30.685,
+          "topCm": 11.975,
+          "widthCm": 2.644,
+          "heightCm": 0.852,
+          "text": "0.83%",
+          "paragraphs": [
+            {
+              "text": "0.83%",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "0.83%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": [
+                    237,
+                    125,
+                    49
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 3,
+          "name": "标题 3",
+          "type": "text",
+          "leftCm": 2.099,
+          "topCm": 0.492,
+          "widthCm": 30.0,
+          "heightCm": 2.0,
+          "text": "央视台组排名第11位，与前一日保持不变",
+          "paragraphs": [
+            {
+              "text": "央视台组排名第11位，与前一日保持不变",
+              "alignment": "LEFT (1)",
+              "runs": [
+                {
+                  "text": "央视台组排名第1",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "1",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "位，与前一日保持不变",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 4,
+          "name": "文本框 9",
+          "type": "text",
+          "leftCm": 1.929,
+          "topCm": 17.963,
+          "widthCm": 10.874,
+          "heightCm": 0.766,
+          "text": "备注：仅体现考核序列内央视台组频道",
+          "paragraphs": [
+            {
+              "text": "备注：仅体现考核序列内央视台组频道",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "备注：",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "仅体现",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "考核序列内央视台组频道",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "geometryShapes": []
+    },
+    {
+      "slideNo": 5,
+      "textShapes": [
+        {
+          "shapeIndex": 1,
+          "name": "标题 3",
+          "type": "text",
+          "leftCm": 1.685,
+          "topCm": 0.513,
+          "widthCm": 30.0,
+          "heightCm": 2.0,
+          "text": "上星频道排名第19位，较前一日上升3位",
+          "paragraphs": [
+            {
+              "text": "上星频道排名第19位，较前一日上升3位",
+              "alignment": "LEFT (1)",
+              "runs": [
+                {
+                  "text": "上星频道排名第19位，较前一日上升3位",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "geometryShapes": []
+    },
+    {
+      "slideNo": 6,
+      "textShapes": [
+        {
+          "shapeIndex": 1,
+          "name": "文本框 23",
+          "type": "text",
+          "leftCm": 25.352,
+          "topCm": 3.326,
+          "widthCm": 2.473,
+          "heightCm": 0.852,
+          "text": "2.286",
+          "paragraphs": [
+            {
+              "text": "2.286",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "2.286",
+                  "fontName": null,
+                  "fontSizePt": null,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 2,
+          "name": "标题 5",
+          "type": "text",
+          "leftCm": 1.97,
+          "topCm": 0.434,
+          "widthCm": 29.96,
+          "heightCm": 2.159,
+          "text": "2月10日，频道市场份额0.756%，收视率0.044%",
+          "paragraphs": [
+            {
+              "text": "2月10日，频道市场份额0.756%，收视率0.044%",
+              "alignment": "LEFT (1)",
+              "runs": [
+                {
+                  "text": "2月10日，频道市场份额0.756%，收视率0.044%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "geometryShapes": []
+    },
+    {
+      "slideNo": 7,
+      "textShapes": [
+        {
+          "shapeIndex": 1,
+          "name": "文本框 2",
+          "type": "text",
+          "leftCm": 3.789,
+          "topCm": 2.593,
+          "widthCm": 1.02,
+          "heightCm": 1.847,
+          "text": "0.2200",
+          "paragraphs": [
+            {
+              "text": "0.2200",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "0.2200",
+                  "fontName": null,
+                  "fontSizePt": null,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 7,
+          "name": "文本框 9",
+          "type": "text",
+          "leftCm": 2.326,
+          "topCm": 18.284,
+          "widthCm": 10.874,
+          "heightCm": 0.766,
+          "text": "备注：仅体现早6点至晚12点之间开播的节目",
+          "paragraphs": [
+            {
+              "text": "备注：仅体现早6点至晚12点之间开播的节目",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "备注：",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "仅体现早",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "6",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "点至晚",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "12",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "点之间开播的节目",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 8,
+          "name": "标题 12",
+          "type": "text",
+          "leftCm": 2.514,
+          "topCm": 0.808,
+          "widthCm": 29.813,
+          "heightCm": 1.785,
+          "text": "2月10日栏目收视率排名",
+          "paragraphs": [
+            {
+              "text": "2月10日栏目收视率排名",
+              "alignment": "LEFT (1)",
+              "runs": [
+                {
+                  "text": "2月10日栏目收视率排名",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "geometryShapes": []
+    },
+    {
+      "slideNo": 8,
+      "textShapes": [
+        {
+          "shapeIndex": 1,
+          "name": "文本框 2",
+          "type": "text",
+          "leftCm": 3.598,
+          "topCm": 2.293,
+          "widthCm": 1.125,
+          "heightCm": 1.655,
+          "text": "2.286",
+          "paragraphs": [
+            {
+              "text": "2.286",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "2.286",
+                  "fontName": null,
+                  "fontSizePt": null,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 7,
+          "name": "标题 12",
+          "type": "text",
+          "leftCm": 2.376,
+          "topCm": 0.977,
+          "widthCm": 29.554,
+          "heightCm": 1.625,
+          "text": "2月10日栏目收视份额排名",
+          "paragraphs": [
+            {
+              "text": "2月10日栏目收视份额排名",
+              "alignment": "LEFT (1)",
+              "runs": [
+                {
+                  "text": "2",
+                  "fontName": null,
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "月10日栏目收视份额排名",
+                  "fontName": null,
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 8,
+          "name": "文本框 9",
+          "type": "text",
+          "leftCm": 2.326,
+          "topCm": 18.284,
+          "widthCm": 10.874,
+          "heightCm": 0.766,
+          "text": "备注：仅体现早6点至晚12点之间开播的节目",
+          "paragraphs": [
+            {
+              "text": "备注：仅体现早6点至晚12点之间开播的节目",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "备注：",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "仅体现早",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "6",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "点至晚",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "12",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                },
+                {
+                  "text": "点之间开播的节目",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 12.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "geometryShapes": []
+    },
+    {
+      "slideNo": 9,
+      "textShapes": [
+        {
+          "shapeIndex": 0,
+          "name": "标题 9",
+          "type": "text",
+          "leftCm": 2.651,
+          "topCm": 0.593,
+          "widthCm": 29.279,
+          "heightCm": 2.0,
+          "text": "分分钟收视率",
+          "paragraphs": [
+            {
+              "text": "分分钟收视率",
+              "alignment": "LEFT (1)",
+              "runs": [
+                {
+                  "text": "分分钟收视率",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "geometryShapes": []
+    },
+    {
+      "slideNo": 10,
+      "textShapes": [
+        {
+          "shapeIndex": 0,
+          "name": "标题 11",
+          "type": "text",
+          "leftCm": 2.466,
+          "topCm": 1.06,
+          "widthCm": 29.065,
+          "heightCm": 1.519,
+          "text": "分分钟市场份额",
+          "paragraphs": [
+            {
+              "text": "分分钟市场份额",
+              "alignment": "LEFT (1)",
+              "runs": [
+                {
+                  "text": "分分钟市场份额",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "geometryShapes": []
+    },
+    {
+      "slideNo": 11,
+      "textShapes": [
+        {
+          "shapeIndex": 0,
+          "name": "文本占位符 1",
+          "type": "text",
+          "leftCm": 1.64,
+          "topCm": 2.858,
+          "widthCm": 30.215,
+          "heightCm": 2.54,
+          "text": "2月10日，对比前一个月均值，首播栏目收视率中，《群英汇-马背长歌》0.015%，下降68%，《中国三农报道》0.058%，下降25%，《振兴路上新观察》0.063%，下降53%，《共富经-策马扬鞭向新程》0.142%，提升87%，《农人秀-家乡年货开箱记》0.076%，提升58%，《盘中餐-食暖幸福年》0.044%，提升57%。",
+          "paragraphs": [
+            {
+              "text": "2月10日，对比前一个月均值，首播栏目收视率中，《群英汇-马背长歌》0.015%，下降68%，《中国三农报道》0.058%，下降25%，《振兴路上新观察》0.063%，下降53%，《共富经-策马扬鞭向新程》0.142%，提升87%，《农人秀-家乡年货开箱记》0.076%，提升58%，《盘中餐-食暖幸福年》0.044%，提升57%。",
+              "alignment": "JUSTIFY (4)",
+              "runs": [
+                {
+                  "text": "2月10日，对比前一个月均值，首播栏目收视率中，《群英汇-马背长歌》0.015%，下降68%，《中国三农报道》0.058%，下降25%，《振兴路上新观察》0.063%，下降53%，《共富经-策马扬鞭向新程》0.142%，提升87%，《农人秀-家乡年货开箱记》0.076%，提升58%，《盘中餐-食暖幸福年》0.044%，提升57%。",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": null,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 2,
+          "name": "标题 7",
+          "type": "text",
+          "leftCm": 2.464,
+          "topCm": 0.974,
+          "widthCm": 29.466,
+          "heightCm": 1.697,
+          "text": "栏目首播收视率",
+          "paragraphs": [
+            {
+              "text": "栏目首播收视率",
+              "alignment": "LEFT (1)",
+              "runs": [
+                {
+                  "text": "栏目首播收视率",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "geometryShapes": []
+    },
+    {
+      "slideNo": 12,
+      "textShapes": [
+        {
+          "shapeIndex": 0,
+          "name": "文本占位符 1",
+          "type": "text",
+          "leftCm": 1.64,
+          "topCm": 2.858,
+          "widthCm": 30.427,
+          "heightCm": 2.54,
+          "text": "2月10日，对比前一个月均值，首播栏目市场份额中，《群英汇-马背长歌》0.191%，下降67%，《中国三农报道》0.532%，下降17%，《振兴路上新观察》0.466%，下降49%，《共富经-策马扬鞭向新程》0.814%，提升79%，《农人秀-家乡年货开箱记》0.777%，提升46%，《盘中餐-食暖幸福年》0.902%，提升38%。",
+          "paragraphs": [
+            {
+              "text": "2月10日，对比前一个月均值，首播栏目市场份额中，《群英汇-马背长歌》0.191%，下降67%，《中国三农报道》0.532%，下降17%，《振兴路上新观察》0.466%，下降49%，《共富经-策马扬鞭向新程》0.814%，提升79%，《农人秀-家乡年货开箱记》0.777%，提升46%，《盘中餐-食暖幸福年》0.902%，提升38%。",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "2月10日，对比前一个月均值，首播栏目市场份额中，《群英汇-马背长歌》0.191%，下降67%，《中国三农报道》0.532%，下降17%，《振兴路上新观察》0.466%，下降49%，《共富经-策马扬鞭向新程》0.814%，提升79%，《农人秀-家乡年货开箱记》0.777%，提升46%，《盘中餐-食暖幸福年》0.902%，提升38%。",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": null,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 2,
+          "name": "标题 7",
+          "type": "text",
+          "leftCm": 2.277,
+          "topCm": 1.0,
+          "widthCm": 29.653,
+          "heightCm": 1.679,
+          "text": "栏目首播市场份额",
+          "paragraphs": [
+            {
+              "text": "栏目首播市场份额",
+              "alignment": "LEFT (1)",
+              "runs": [
+                {
+                  "text": "栏目首播市场份额",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "geometryShapes": []
+    },
+    {
+      "slideNo": 13,
+      "textShapes": [
+        {
+          "shapeIndex": 1,
+          "name": "文本框 7",
+          "type": "text",
+          "leftCm": 24.07,
+          "topCm": 3.747,
+          "widthCm": 1.967,
+          "heightCm": 0.96,
+          "text": "↓8%",
+          "paragraphs": [
+            {
+              "text": "↓8%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "↓",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                },
+                {
+                  "text": "8%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 2,
+          "name": "文本框 15",
+          "type": "text",
+          "leftCm": 7.101,
+          "topCm": 3.778,
+          "widthCm": 3.658,
+          "heightCm": 0.852,
+          "text": "单位：万人",
+          "paragraphs": [
+            {
+              "text": "单位：万人",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "单位：万人",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 3,
+          "name": "文本框 25",
+          "type": "text",
+          "leftCm": 2.566,
+          "topCm": 6.411,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "-15%",
+          "paragraphs": [
+            {
+              "text": "-15%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "-15%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 4,
+          "name": "文本框 26",
+          "type": "text",
+          "leftCm": 4.186,
+          "topCm": 6.411,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "-0.3%",
+          "paragraphs": [
+            {
+              "text": "-0.3%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "-0.3%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 5,
+          "name": "文本框 27",
+          "type": "text",
+          "leftCm": 7.065,
+          "topCm": 11.277,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "-4%",
+          "paragraphs": [
+            {
+              "text": "-4%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "-4%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 6,
+          "name": "文本框 28",
+          "type": "text",
+          "leftCm": 8.612,
+          "topCm": 11.945,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "19%",
+          "paragraphs": [
+            {
+              "text": "19%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "19%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 7,
+          "name": "文本框 29",
+          "type": "text",
+          "leftCm": 10.186,
+          "topCm": 11.371,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "24%",
+          "paragraphs": [
+            {
+              "text": "24%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "24%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 8,
+          "name": "文本框 31",
+          "type": "text",
+          "leftCm": 13.152,
+          "topCm": 10.758,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "-8%",
+          "paragraphs": [
+            {
+              "text": "-8%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "-8%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 9,
+          "name": "文本框 32",
+          "type": "text",
+          "leftCm": 14.74,
+          "topCm": 10.005,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "-11%",
+          "paragraphs": [
+            {
+              "text": "-11%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "-11%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 10,
+          "name": "文本框 33",
+          "type": "text",
+          "leftCm": 16.485,
+          "topCm": 7.731,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "-13%",
+          "paragraphs": [
+            {
+              "text": "-13%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "-13%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 11,
+          "name": "文本框 34",
+          "type": "text",
+          "leftCm": 19.214,
+          "topCm": 11.705,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "-36%",
+          "paragraphs": [
+            {
+              "text": "-36%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "-36%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 12,
+          "name": "文本框 35",
+          "type": "text",
+          "leftCm": 20.722,
+          "topCm": 8.973,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "2%",
+          "paragraphs": [
+            {
+              "text": "2%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "2%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 13,
+          "name": "文本框 36",
+          "type": "text",
+          "leftCm": 22.338,
+          "topCm": 8.387,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "-11%",
+          "paragraphs": [
+            {
+              "text": "-11%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "-11%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 14,
+          "name": "文本框 37",
+          "type": "text",
+          "leftCm": 23.854,
+          "topCm": 10.009,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "-10%",
+          "paragraphs": [
+            {
+              "text": "-10%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "-10%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 15,
+          "name": "文本框 38",
+          "type": "text",
+          "leftCm": 25.457,
+          "topCm": 11.129,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "1%",
+          "paragraphs": [
+            {
+              "text": "1%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "1%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 16,
+          "name": "文本框 39",
+          "type": "text",
+          "leftCm": 28.31,
+          "topCm": 4.981,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "-2%",
+          "paragraphs": [
+            {
+              "text": "-2%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "-2%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 17,
+          "name": "文本框 40",
+          "type": "text",
+          "leftCm": 29.803,
+          "topCm": 7.96,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "-18%",
+          "paragraphs": [
+            {
+              "text": "-18%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "-18%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 34,
+          "name": "文本框 2",
+          "type": "text",
+          "leftCm": 11.656,
+          "topCm": 11.705,
+          "widthCm": 1.966,
+          "heightCm": 0.852,
+          "text": "-17%",
+          "paragraphs": [
+            {
+              "text": "-17%",
+              "alignment": "CENTER (2)",
+              "runs": [
+                {
+                  "text": "-17%",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 14.0,
+                  "bold": true,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "shapeIndex": 35,
+          "name": "标题 5",
+          "type": "text",
+          "leftCm": 1.93,
+          "topCm": 0.635,
+          "widthCm": 30.0,
+          "heightCm": 2.0,
+          "text": "频道分类观众规模",
+          "paragraphs": [
+            {
+              "text": "频道分类观众规模",
+              "alignment": "LEFT (1)",
+              "runs": [
+                {
+                  "text": "频道分类观众规模",
+                  "fontName": "微软雅黑",
+                  "fontSizePt": 32.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "geometryShapes": [
+        {
+          "shapeIndex": 18,
+          "name": "图片 9",
+          "type": "geometry",
+          "autoShapeType": "RECTANGLE (1)",
+          "leftCm": 2.374,
+          "topCm": 15.778,
+          "widthCm": 1.404,
+          "heightCm": 1.404,
+          "fillRGB": null
+        },
+        {
+          "shapeIndex": 19,
+          "name": "图片 3",
+          "type": "geometry",
+          "autoShapeType": "RECTANGLE (1)",
+          "leftCm": 4.186,
+          "topCm": 15.785,
+          "widthCm": 1.397,
+          "heightCm": 1.397,
+          "fillRGB": null
+        },
+        {
+          "shapeIndex": 20,
+          "name": "图片 48",
+          "type": "geometry",
+          "autoShapeType": "RECTANGLE (1)",
+          "leftCm": 7.086,
+          "topCm": 16.08,
+          "widthCm": 1.102,
+          "heightCm": 1.102,
+          "fillRGB": null
+        },
+        {
+          "shapeIndex": 21,
+          "name": "图片 49",
+          "type": "geometry",
+          "autoShapeType": "RECTANGLE (1)",
+          "leftCm": 8.244,
+          "topCm": 15.676,
+          "widthCm": 1.506,
+          "heightCm": 1.506,
+          "fillRGB": null
+        },
+        {
+          "shapeIndex": 22,
+          "name": "图片 50",
+          "type": "geometry",
+          "autoShapeType": "RECTANGLE (1)",
+          "leftCm": 9.621,
+          "topCm": 15.471,
+          "widthCm": 1.711,
+          "heightCm": 1.711,
+          "fillRGB": null
+        },
+        {
+          "shapeIndex": 23,
+          "name": "图片 51",
+          "type": "geometry",
+          "autoShapeType": "RECTANGLE (1)",
+          "leftCm": 11.311,
+          "topCm": 15.471,
+          "widthCm": 1.711,
+          "heightCm": 1.711,
+          "fillRGB": null
+        },
+        {
+          "shapeIndex": 24,
+          "name": "图片 52",
+          "type": "geometry",
+          "autoShapeType": "RECTANGLE (1)",
+          "leftCm": 12.773,
+          "topCm": 15.471,
+          "widthCm": 1.711,
+          "heightCm": 1.711,
+          "fillRGB": null
+        },
+        {
+          "shapeIndex": 25,
+          "name": "图片 53",
+          "type": "geometry",
+          "autoShapeType": "RECTANGLE (1)",
+          "leftCm": 14.326,
+          "topCm": 15.471,
+          "widthCm": 1.711,
+          "heightCm": 1.711,
+          "fillRGB": null
+        },
+        {
+          "shapeIndex": 26,
+          "name": "图片 55",
+          "type": "geometry",
+          "autoShapeType": "RECTANGLE (1)",
+          "leftCm": 16.208,
+          "topCm": 15.916,
+          "widthCm": 1.266,
+          "heightCm": 1.266,
+          "fillRGB": null
+        }
+      ]
+    },
+    {
+      "slideNo": 14,
+      "textShapes": [
+        {
+          "shapeIndex": 0,
+          "name": "标题 3",
+          "type": "text",
+          "leftCm": 16.719,
+          "topCm": 5.651,
+          "widthCm": 14.529,
+          "heightCm": 7.75,
+          "text": "感谢观看",
+          "paragraphs": [
+            {
+              "text": "感谢观看",
+              "alignment": null,
+              "runs": [
+                {
+                  "text": "感谢观看",
+                  "fontName": null,
+                  "fontSizePt": 88.0,
+                  "bold": false,
+                  "colorRGB": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "geometryShapes": []
+    }
+  ]
+}
