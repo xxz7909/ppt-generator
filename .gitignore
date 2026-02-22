@@ -39,3 +39,4 @@ output_ppt/
 *.env
 .env
 clash-for-linux.zip
+dist.zip

@@ -279,10 +279,9 @@ def build_summary(prs, data: ReportData):
         non_drama_share_chg = round((dr.non_drama_current_share - dr.non_drama_period_share) / dr.non_drama_period_share * 100)
 
     drama_chg_str = _summary_change_desc(drama_share_chg)
-    non_drama_chg_str = _summary_change_desc(non_drama_share_chg)
     para2 = (
         f'{date_s}，对比前一个月均值，电视剧市场份额{dr.drama_current_share:.3f}%，{drama_chg_str}，'
-        f'非电视剧市场份额{dr.non_drama_current_share:.3f}%，{non_drama_chg_str}。'
+        f'非电视剧市场份额{dr.non_drama_current_share:.3f}%。'
     )
 
     para3 = (
