@@ -361,7 +361,7 @@ def build_market_share(prs, data: ReportData, page_num=1):
     # 标题
     share_chg = _change_desc(ms.share_change, '提升', '下降', '基本持平')
     rating_chg = _change_desc(ms.rating_change, '提升', '下降', '基本持平')
-    title = f'{data.report_date_short}，市场份额{share_chg}  收视率{rating_chg}'
+    title = f'{data.report_date_short}，市场份额{share_chg}，收视率{rating_chg}'
     _add_title_bar(slide, title, page_num=page_num)
 
     # 描述文本（匹配 demo 格式，生成2个段落以匹配demo的XML结构）
@@ -455,21 +455,23 @@ def build_market_share(prs, data: ReportData, page_num=1):
                   series_colors=[Colors.CHART_SERIES[1]])
 
     # ── 右上: 到达率变化表格 ──
+    # NOTE: y=8.6 使到达率在 draft 中靠下，匹配 demo 模板中到达率表格的 y≈10.8cm 位置
     reach_headers = ['平均到达率%', '']
     reach_data = [
         [f'{ms.reach_change:+.0f}%', ''],
         [f'前1个月均值{ms.cctv17_period_reach:.2f}', f'当天{ms.cctv17_current_reach:.2f}']
     ]
-    add_styled_table(slide, Cm(22), Cm(5.6), Cm(6.5), Cm(3.0),
+    add_styled_table(slide, Cm(22), Cm(8.6), Cm(6.5), Cm(3.0),
                      reach_headers, reach_data)
 
     # ── 右下: 忠实度变化表格 ──
+    # NOTE: y=5.6 使忠实度在 draft 中靠上，匹配 demo 模板中忠实度表格的 y≈14.2cm 位置
     loy_headers = ['平均忠实度', '']
     loy_data = [
         [f'{ms.loyalty_change:+.0f}%', ''],
         [f'前1个月均值{ms.cctv17_period_loyalty:.2f}', f'当天{ms.cctv17_current_loyalty:.2f}']
     ]
-    add_styled_table(slide, Cm(22), Cm(8.6), Cm(6.5), Cm(3.0),
+    add_styled_table(slide, Cm(22), Cm(5.6), Cm(6.5), Cm(3.0),
                      loy_headers, loy_data)
 
     return slide
@@ -492,19 +494,8 @@ def build_org_ranking(prs, data: ReportData, page_num=2):
         return slide
 
     # 获取日期标签
-    prev_date = ''
     curr_date = data.report_date_short
-    if data.market_share.has_prev_day:
-        prev_label = data.market_share.current_date_label
-        # 前一天
-        try:
-            parts = prev_label.split('/')
-            day = int(parts[2]) - 1
-            prev_date = f'{int(parts[1])}月{day}日'
-        except:
-            prev_date = '前一日'
-    else:
-        prev_date = '前一日'
+    prev_date = data.market_share.prev_date_label if data.market_share.prev_date_label else '前一日'
 
     # 构建表格数据
     prev_sorted = sorted(rankings, key=lambda x: x.prev_share, reverse=True)
@@ -524,10 +515,12 @@ def build_org_ranking(prs, data: ReportData, page_num=2):
         if prev_item:
             if '中央级' in prev_item.name:
                 rank_str = '\u3000'
+                display_name = '央视台组'
             else:
                 prev_rank += 1
                 rank_str = str(prev_rank)
-            row += [rank_str, prev_item.short_name or prev_item.name,
+                display_name = prev_item.short_name or prev_item.name
+            row += [rank_str, display_name,
                     f'{prev_item.prev_share:.3f}']
         else:
             row += ['', '', '']
@@ -535,10 +528,12 @@ def build_org_ranking(prs, data: ReportData, page_num=2):
         if curr_item:
             if '中央级' in curr_item.name:
                 rank_str = '\u3000'
+                display_name = '央视台组'
             else:
                 curr_rank += 1
                 rank_str = str(curr_rank)
-            row += [rank_str, curr_item.short_name or curr_item.name,
+                display_name = curr_item.short_name or curr_item.name
+            row += [rank_str, display_name,
                     f'{curr_item.current_share:.3f}']
         else:
             row += ['', '', '']
@@ -623,7 +618,7 @@ def build_channel_ranking(prs, data: ReportData, page_num=3):
     if not rankings:
         return slide
 
-    prev_date = '前一日'
+    prev_date = data.market_share.prev_date_label if data.market_share.prev_date_label else '前一日'
     curr_date = data.report_date_short
 
     curr_sorted = sorted(rankings, key=lambda x: x.current_share, reverse=True)
@@ -794,10 +789,15 @@ def build_schedule_chart(prs, data: ReportData, page_num=4):
     for p in programs:
         if p.duration <= 5:
             continue
-        # 过滤凌晨节目
+        # 过滤凌晨节目（0-5点）
         try:
-            hour = int(p.start_time.split(':')[0])
-            if hour < 6 and hour >= 2:
+            st = p.start_time.strip()
+            if ' ' in st:
+                time_part = st.split(' ')[1]
+                hour = int(time_part.split(':')[0])
+            else:
+                hour = int(st.split(':')[0])
+            if hour < 6:
                 continue
         except:
             pass
@@ -819,7 +819,7 @@ def build_schedule_chart(prs, data: ReportData, page_num=4):
         share_vals.append(p.market_share)
         rating_vals.append(p.rating)
 
-    series = {'市场份额%': share_vals, '收视率': rating_vals}
+    series = {'市场份额%': share_vals, '收视率%': rating_vals}
 
     # 生成图表颜色（首播节目用深色，重播用浅色）
     chart_shape = add_column_chart(
@@ -857,14 +857,21 @@ def build_program_ranking(prs, data: ReportData, metric='rating', page_num=5):
     if not programs:
         return slide
 
-    # 过滤有效节目 (时长>5min, 6:00-24:00)
+    # 过滤有效节目 (时长>5min, 6:00-24:00开播)
     valid = []
     for p in programs:
         if p.duration <= 5:
             continue
         try:
-            hour = int(p.start_time.split(':')[0])
-            if 2 <= hour < 6:
+            st = p.start_time.strip()
+            # 处理 "1900-01-01 00:39:34" 格式（凌晨节目）
+            if ' ' in st:
+                time_part = st.split(' ')[1]
+                hour = int(time_part.split(':')[0])
+            else:
+                hour = int(st.split(':')[0])
+            # 只保留 6:00 ~ 23:59 之间开播的节目（排除0-5点的凌晨节目）
+            if hour < 6:
                 continue
         except:
             pass
@@ -902,7 +909,7 @@ def build_program_ranking(prs, data: ReportData, metric='rating', page_num=5):
                     font_size=Fonts.BODY_SIZE, font_color=Colors.ACCENT_RED,
                     bold=True)
 
-    add_note(slide, '备注：仅体现早6点至晚22点之间开播的节目',
+    add_note(slide, '备注：仅体现早6点至晚12点之间开播的节目',
              top=Cm(16.5))
 
     return slide
@@ -987,9 +994,12 @@ def _add_program_labels(slide, data, left, top, width, height):
         return
 
     # 过滤出6:00-24:00的有效节目
+    _HIDDEN_NAMES = {'国歌', '歌曲', '再见'}
     valid = []
     for p in programs:
         if p.duration < 5:
+            continue
+        if p.name.strip() in _HIDDEN_NAMES:
             continue
         try:
             hour = int(p.start_time.split(':')[0])

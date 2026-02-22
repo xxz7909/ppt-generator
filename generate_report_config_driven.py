@@ -19,6 +19,7 @@ import json
 import os
 import re
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
@@ -531,7 +532,7 @@ def _build_slide_titles(data):
     # Page 3 (idx=2): 市场份额概览
     share_chg = _change_desc(ms.share_change)
     rating_chg = _change_desc(ms.rating_change)
-    titles[2] = f'{data.report_date_short}，市场份额{share_chg}  收视率{rating_chg}'
+    titles[2] = f'{data.report_date_short}，市场份额{share_chg}，收视率{rating_chg}'
 
     # Page 4 (idx=3): 台组内排名
     org_chg = _rank_change_desc(data.org_rank_change)
@@ -745,6 +746,36 @@ def _compute_nice_axis(max_val):
     return best
 
 
+def _set_label_color(shape, hex_color):
+    """
+    将文本框中所有 run 和 endParaRPr 的字体颜色设置为指定的 srgbClr。
+
+    替换现有 solidFill（无论是 schemeClr 还是 srgbClr）。
+    """
+    A = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    P = 'http://schemas.openxmlformats.org/presentationml/2006/main'
+
+    txBody = shape._element.find(f'.//{{{A}}}txBody')
+    if txBody is None:
+        txBody = shape._element.find(f'.//{{{P}}}txBody')
+    if txBody is None:
+        return
+
+    # 处理所有 rPr 和 endParaRPr
+    rpr_tags = [f'{{{A}}}rPr', f'{{{A}}}endParaRPr']
+    for tag in rpr_tags:
+        for rPr in txBody.findall(f'.//{tag}'):
+            # 移除旧 solidFill
+            for old_fill in rPr.findall(f'{{{A}}}solidFill'):
+                rPr.remove(old_fill)
+            # 添加新 solidFill
+            sf = etree.SubElement(rPr, f'{{{A}}}solidFill')
+            srgb = etree.SubElement(sf, f'{{{A}}}srgbClr')
+            srgb.set('val', hex_color)
+            # 放到 rPr 的第一个子元素位置（solidFill 通常在前面）
+            rPr.insert(0, sf)
+
+
 def _sync_and_position_audience(target_slide, src_slide):
     """
     Page 13（频道分类观众规模）：同步图表数据 + 动态定位变化标签。
@@ -824,7 +855,7 @@ def _sync_and_position_audience(target_slide, src_slide):
             text = f'{val_str}%'
         else:
             text = '0%'
-        cat_data.append((i, max_v, text))
+        cat_data.append((i, max_v, text, change_pct))
 
     if not cat_data:
         return
@@ -855,12 +886,16 @@ def _sync_and_position_audience(target_slide, src_slide):
                 bar_labels.append(sh)
     bar_labels.sort(key=lambda s: s.left)
 
+    # 颜色常量：红升绿降
+    COLOR_UP = 'FF0000'
+    COLOR_DOWN = '00B050'
+
     # ── 6. 定位每个柱上标签 ──
     GAP_EMU = 55000          # 标签底边与柱顶的间距（~0.15 cm）
     n = min(len(bar_labels), len(cat_data))
     for i in range(n):
         lbl = bar_labels[i]
-        cat_idx, max_v, new_text = cat_data[i]
+        cat_idx, max_v, new_text, chg_pct = cat_data[i]
 
         # X: 居中于类别柱组
         cat_center_x = plot_left + int(plot_width * (cat_idx + 0.5) / num_cats)
@@ -880,7 +915,11 @@ def _sync_and_position_audience(target_slide, src_slide):
             if paras:
                 _replace_para_text(paras[0], new_text)
 
-    # ── 7. 图例变化标签（仅替换文字） ──
+        # 颜色：红升绿降
+        if chg_pct != 0:
+            _set_label_color(lbl, COLOR_UP if chg_pct > 0 else COLOR_DOWN)
+
+    # ── 7. 图例变化标签（仅替换文字 + 颜色） ──
     if legend_label:
         total_s0 = sum(v for v in s0 if v is not None)
         total_s1 = sum(v for v in s1 if v is not None)
@@ -899,6 +938,9 @@ def _sync_and_position_audience(target_slide, src_slide):
             paras = txBody.findall(f'{{{A_NS}}}p')
             if paras:
                 _replace_para_text(paras[0], leg_text)
+        # 颜色：红升绿降
+        if total_chg != 0:
+            _set_label_color(legend_label, COLOR_UP if total_chg > 0 else COLOR_DOWN)
 
 
 def _fix_change_pct_colors(slide):
@@ -988,7 +1030,9 @@ def _load_threshold_config():
 
     返回 (color_hex, threshold_text, threshold_value)
     """
-    config_path = Path(__file__).parent / 'demo_layout_config.json'
+    # 兼容 PyInstaller 打包：优先使用 _MEIPASS（打包后的临时目录）
+    _base = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent))
+    config_path = _base / 'demo_layout_config.json'
     default_color = 'ED7D31'
     default_text = '0.83%'
     default_value = 0.83
@@ -1071,6 +1115,32 @@ def _fix_org_ranking_page(slide, threshold_color='ED7D31',
                     threshold_row = r
             except (ValueError, TypeError):
                 pass
+
+    # ── 0. 清除非 CCTV-17 数据行的残留绿色/加粗（demo 模板中旧位置） ──
+    for r in range(2, n_rows):
+        if r in cctv17_all_rows:
+            continue
+        for c in range(n_cols):
+            tc = tbl.cell(r, c)._tc
+            for run in tc.findall(f'.//{{{A_NS}}}r'):
+                rpr = run.find(f'{{{A_NS}}}rPr')
+                if rpr is None:
+                    continue
+                # 移除绿色 solidFill
+                for sf in rpr.findall(f'{{{A_NS}}}solidFill'):
+                    clr = sf.find(f'{{{A_NS}}}srgbClr')
+                    if clr is not None and clr.get('val') == GREEN_FONT:
+                        rpr.remove(sf)
+                # 移除加粗（恢复为非粗体）
+                if rpr.get('b') == '1':
+                    rpr.attrib.pop('b', None)
+            for eprpr in tc.findall(f'.//{{{A_NS}}}endParaRPr'):
+                for sf in eprpr.findall(f'{{{A_NS}}}solidFill'):
+                    clr = sf.find(f'{{{A_NS}}}srgbClr')
+                    if clr is not None and clr.get('val') == GREEN_FONT:
+                        eprpr.remove(sf)
+                if eprpr.get('b') == '1':
+                    eprpr.attrib.pop('b', None)
 
     # ── 1. 绿色字体 ──
     for r in cctv17_all_rows:
@@ -1434,13 +1504,18 @@ def _group_programs(programs, max_cols=20):
     每个节目按"开始时间"和"结束时间"确定其在时间轴上的位置与宽度。
     首播/重播判定：下午剧场~晚间节目时段 (13:30-22:30) 的节目标记为（首播），
     其余时段（早间、上午、午间、夜间）标记为（重播）。
-    电视剧类别的节目加"电视剧："前缀。
+    连续播出的同名节目（如电视剧连续几集）自动合并为一个单元格。
 
-    返回: list of dict {'name': str, 'start': int(minutes), 'end': int(minutes), 'duration': int}
+    返回: list of dict {'name': str, 'start': int, 'end': int, 'duration': int, 'premiere': bool}
     """
+    # 不显示的节目名称
+    _HIDDEN_NAMES = {'国歌', '歌曲', '再见'}
+
     valid = []
     for p in programs:
         if p.duration < 1:
+            continue
+        if p.name.strip() in _HIDDEN_NAMES:
             continue
         start_m = _parse_time_minutes(p.start_time)
         # 排除凌晨 02:00~05:29
@@ -1449,26 +1524,37 @@ def _group_programs(programs, max_cols=20):
         end_m = _parse_time_minutes(p.end_time)
 
         # 首播/重播判定：下午剧场(13:30)起到晚间节目(22:30)止为首播，其余为重播
-        if 13 * 60 + 30 <= start_m < 22 * 60 + 30:
-            suffix = '（首播）'
-        else:
-            suffix = '（重播）'
+        is_premiere = (13 * 60 + 30 <= start_m < 22 * 60 + 30)
+        suffix = '（首播）' if is_premiere else '（重播）'
 
-        # 电视剧加前缀
-        prefix = '电视剧：' if getattr(p, 'category', '') == '电视剧' else ''
-        display_name = f'{prefix}{p.name}{suffix}'
+        # 不加"电视剧："前缀，只保留节目名
+        display_name = f'{p.name}{suffix}'
 
         valid.append({
             'name': display_name,
+            'raw_name': p.name,
             'start': start_m,
             'end': end_m,
             'duration': max(end_m - start_m, 1),
+            'premiere': is_premiere,
         })
 
     if not valid:
         return valid
 
+    # 合并连续播出的同名节目（如电视剧连续几集）
+    consecutive = [dict(valid[0])]
+    for v in valid[1:]:
+        prev = consecutive[-1]
+        if v['raw_name'] == prev['raw_name'] and v['premiere'] == prev['premiere']:
+            prev['end'] = v['end']
+            prev['duration'] = prev['end'] - prev['start']
+        else:
+            consecutive.append(dict(v))
+    valid = consecutive
+
     # 合并短节目 (< 5 min) 到相邻节目
+    _MAX_MERGE_LEN = 20   # 合并后名称上限（防止垂直文本溢出重叠）
     merged = []
     i = 0
     while i < len(valid):
@@ -1476,7 +1562,7 @@ def _group_programs(programs, max_cols=20):
         while grp['duration'] < 5 and i + 1 < len(valid):
             i += 1
             nxt = valid[i]
-            if len(grp['name']) + len(nxt['name']) < 45:
+            if len(grp['name']) + len(nxt['name']) < _MAX_MERGE_LEN:
                 grp['name'] = grp['name'] + '+' + nxt['name']
             grp['end'] = nxt['end']
             grp['duration'] = grp['end'] - grp['start']
@@ -1492,7 +1578,7 @@ def _group_programs(programs, max_cols=20):
             nb = min_idx - 1
         a, b = sorted([min_idx, nb])
         combined_name = merged[a]['name']
-        if len(combined_name) + len(merged[b]['name']) < 45:
+        if len(combined_name) + len(merged[b]['name']) < _MAX_MERGE_LEN:
             combined_name += '+' + merged[b]['name']
         combined = {
             'name': combined_name,
@@ -1501,6 +1587,11 @@ def _group_programs(programs, max_cols=20):
             'duration': merged[b]['end'] - merged[a]['start'],
         }
         merged = merged[:a] + [combined] + merged[b + 1:]
+
+    # 截断过长名称：合并后仍超长时只保留第一个节目名
+    for g in merged:
+        if len(g['name']) > _MAX_MERGE_LEN and '+' in g['name']:
+            g['name'] = g['name'].split('+')[0]
 
     return merged
 
@@ -1572,14 +1663,11 @@ def _fix_minute_chart_page(target_slide, data, metric='rating'):
 
     a_ns = 'http://schemas.openxmlformats.org/drawingml/2006/main'
 
-    # ── 更新表头表格（固定时段名称）──
+    # ── 更新表头文字（固定时段名称）──
     if header_tbl_shape:
         tbl = header_tbl_shape.table
         n = min(len(tbl.columns), len(_FIXED_TIME_SLOTS))
-        widths = _proportional_widths(slot_durations[:n], header_tbl_shape.width)
-
         for ci in range(n):
-            tbl.columns[ci].width = widths[ci]
             new_text = _FIXED_TIME_SLOTS[ci][0]  # 早间节目 / 上午剧场 / …
             tc_elem = tbl.cell(0, ci)._tc
             tc_body = tc_elem.find(f'.//{{{a_ns}}}txBody')
@@ -1592,40 +1680,105 @@ def _fix_minute_chart_page(target_slide, data, metric='rating'):
             else:
                 tbl.cell(0, ci).text = new_text
 
-    # ── 更新分隔线表格（同比例列宽，绿线对齐）──
-    if divider_tbl_shape:
-        tbl = divider_tbl_shape.table
-        n = min(len(tbl.columns), len(_FIXED_TIME_SLOTS))
-        widths = _proportional_widths(slot_durations[:n], divider_tbl_shape.width)
-        for ci in range(n):
-            tbl.columns[ci].width = widths[ci]
+    # ── 获取图表绘图区域用于对齐 ──
+    chart_shape = None
+    for shp in target_slide.shapes:
+        if getattr(shp, 'has_chart', False):
+            chart_shape = shp
+            break
+
+    chart_start_min = 330   # 05:30
+    chart_end_min = 1560    # 26:00
+    plot_left = None
+    plot_width = None
+
+    if chart_shape:
+        chart = chart_shape.chart
+        cats = list(chart.plots[0].categories)
+        if cats:
+            chart_start_min = _parse_time_minutes(cats[0])
+            chart_end_min = _parse_time_minutes(cats[-1]) + 1
+        # 从图表 XML 解析 plotArea 的 x/w
+        chart_xml = etree.tostring(chart._chartSpace).decode()
+        layout_match = re.search(r'<c:plotArea>(.*?)</c:plotArea>', chart_xml, re.DOTALL)
+        if layout_match:
+            x_m = re.search(r'<c:x val="([^"]+)"', layout_match.group(1))
+            w_m = re.search(r'<c:w val="([^"]+)"', layout_match.group(1))
+            if x_m and w_m:
+                pa_x = float(x_m.group(1))
+                pa_w = float(w_m.group(1))
+                plot_left = chart_shape.left + int(pa_x * chart_shape.width)
+                plot_width = int(pa_w * chart_shape.width)
+
+    chart_duration = chart_end_min - chart_start_min
+
+    # 表头/分隔线表格：保留模板原始位置和列宽，不做重新定位
+    # （模板已手动调好对齐，重新计算会导致列太窄、文字换行）
 
     # ── 更新节目名称表格 ──
     if prog_tbl_shape and prog_groups:
         tbl = prog_tbl_shape.table
         ncols = len(tbl.columns)
 
+        # 使节目段连续覆盖整个图表时间范围
+        for i in range(len(prog_groups) - 1):
+            prog_groups[i]['end'] = prog_groups[i + 1]['start']
+        prog_groups[0]['start'] = chart_start_min
+        prog_groups[-1]['end'] = chart_end_min
+        for g in prog_groups:
+            g['duration'] = g['end'] - g['start']
+        prog_durations = [g['duration'] for g in prog_groups]
+
+        # 定位表格以对齐图表绘图区
+        if plot_left is not None:
+            prog_tbl_shape.left = plot_left
+            prog_total_w = plot_width
+        else:
+            prog_total_w = prog_tbl_shape.width
+
         # 判断是否有前导空列（21 列 = 1 spacer + 20 program）
         has_spacer = (ncols == 21)
         data_start = 1 if has_spacer else 0
         data_cols = ncols - data_start
 
+        if has_spacer:
+            tbl.columns[0].width = 0
+
         n = min(data_cols, len(prog_groups))
-        spacer_w = tbl.columns[0].width if has_spacer else 0
-        prog_total_w = prog_tbl_shape.width - spacer_w
         widths = _proportional_widths(prog_durations[:n], prog_total_w)
+
+        # 首播节目颜色：收视率页=橙色, 市场份额页=绿色
+        _PREMIERE_COLOR = 'F39C12' if metric == 'rating' else '4A7C31'
 
         for ci in range(n):
             col_idx = data_start + ci
             tbl.columns[col_idx].width = widths[ci]
             grp = prog_groups[ci]
             new_text = grp['name']
+            is_premiere = grp.get('premiere', False)
             tc_elem = tbl.cell(0, col_idx)._tc
             tc_body = tc_elem.find(f'.//{{{a_ns}}}txBody')
             if tc_body is not None:
                 paras = tc_body.findall(f'{{{a_ns}}}p')
                 if paras:
                     _replace_para_text(paras[0], new_text)
+                    # 居中对齐
+                    pPr = paras[0].find(f'{{{a_ns}}}pPr')
+                    if pPr is None:
+                        pPr = etree.SubElement(paras[0], f'{{{a_ns}}}pPr')
+                        paras[0].insert(0, pPr)
+                    pPr.set('algn', 'ctr')
+                    # 首播节目上色
+                    if is_premiere:
+                        for rr in paras[0].findall(f'{{{a_ns}}}r'):
+                            rPr = rr.find(f'{{{a_ns}}}rPr')
+                            if rPr is not None:
+                                for old_f in rPr.findall(f'{{{a_ns}}}solidFill'):
+                                    rPr.remove(old_f)
+                                sf = etree.SubElement(rPr, f'{{{a_ns}}}solidFill')
+                                sc = etree.SubElement(sf, f'{{{a_ns}}}srgbClr')
+                                sc.set('val', _PREMIERE_COLOR)
+                                rPr.insert(0, sf)
                     for p in paras[1:]:
                         tc_body.remove(p)
             else:
@@ -1714,6 +1867,45 @@ def _sync_slide(target_slide, src_slide, slide_index, total_slides):
     # 第 8 页（idx=7）栏目收视份额排名：超轴最大值标注
     if slide_index == 7:
         _fix_chart_max_annotation(target_slide, annotation_name='文本框 2', num_format=':.3f')
+
+    # 第 11/12 页（idx=10,11）栏目首播收视率/市场份额：修正当日系列颜色为橙色
+    if slide_index in (10, 11):
+        _fix_premiere_chart_colors(target_slide)
+
+
+def _fix_premiere_chart_colors(target_slide):
+    """
+    修正栏目首播页图表的系列颜色。
+
+    问题：demo 模板有 3 个系列(前1个月均值/前一日/当日)，当只有 2 个系列时
+    （无月均数据），replace_data 后 series[1](当日) 继承了 demo 的 series[1]
+    的浅灰色，应改为橙色(FE9B1C)以匹配 demo 的当日系列。
+    """
+    C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
+    A_NS = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+
+    for shp in target_slide.shapes:
+        if not getattr(shp, 'has_chart', False):
+            continue
+        chart = shp.chart
+        n_series = len(list(chart.series))
+        if n_series < 2:
+            continue
+
+        # 修正最后一个系列（当日数据）为橙色 FE9B1C
+        last_ser = list(chart.series)[-1]._element
+        sp = last_ser.find(f'{{{C_NS}}}spPr')
+        if sp is None:
+            sp = etree.SubElement(last_ser, f'{{{C_NS}}}spPr')
+        # 清除旧 solidFill
+        for old_fill in sp.findall(f'{{{A_NS}}}solidFill'):
+            sp.remove(old_fill)
+        # 添加橙色 solidFill
+        solid = etree.SubElement(sp, f'{{{A_NS}}}solidFill')
+        srgb = etree.SubElement(solid, f'{{{A_NS}}}srgbClr')
+        srgb.set('val', 'FE9B1C')
+        # 将 solidFill 放到 spPr 的第一个子元素位置
+        sp.insert(0, solid)
 
 
 # ═══════════════════════════════════════════════════════════════
