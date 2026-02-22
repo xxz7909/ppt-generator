@@ -1,0 +1,13 @@
+Pillow
+bypy
+lxml
+python-pptx
+selenium
+numpy
+openpyxl
+pandas
+pyautogui
+xlrd
+XlsxWriter
+xlwings
+xlwt

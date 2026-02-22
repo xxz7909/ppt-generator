@@ -1,1 +1,41 @@
-.venv
+# 虚拟环境
+.venv/
+venv/
+env/
+
+# Python 编译缓存
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# 构建 & 分发
+dist/
+build/
+*.egg-info/
+*.egg
+
+# 测试 & 覆盖率
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 编辑器 & IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 输出文件
+output_ppt/
+*.pptx
+
+# 敏感配置
+*.env
+.env
+clash-for-linux.zip
