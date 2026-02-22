@@ -75,6 +75,21 @@ def _get_blank_layout(prs):
     return prs.slide_layouts[-1]
 
 
+def _format_start_time(start_time):
+    """格式化节目开始时间为 HH:MM 格式。
+
+    处理异常格式如 '1900-01-01 00:39:34' → '00:39'。
+    """
+    st = str(start_time)
+    if '1900-01-01' in st:
+        parts = st.split(' ')
+        if len(parts) >= 2:
+            time_part = parts[-1]
+            return ':'.join(time_part.split(':')[:2])
+    # 已经是 HH:MM 或 HH:MM:SS 格式
+    return ':'.join(st.split(':')[:2])
+
+
 def _add_slide(prs, layout=None):
     """添加新幻灯片"""
     if layout is None:
@@ -499,25 +514,30 @@ def build_org_ranking(prs, data: ReportData, page_num=2):
     headers = ['排名', '频道', '市场份额%', '排名', '频道', '市场份额%']
 
     data_rows = []
+    prev_rank = 0
+    curr_rank = 0
     for i in range(n_display):
         prev_item = prev_sorted[i] if i < len(prev_sorted) else None
         curr_item = curr_sorted[i] if i < len(curr_sorted) else None
 
         row = []
         if prev_item:
-            # 排名空出第一位（如中央级合计）
-            rank_str = '\u3000' if i == 0 and '中央级' in prev_item.name else str(i+1 if i > 0 else '')
             if '中央级' in prev_item.name:
                 rank_str = '\u3000'
+            else:
+                prev_rank += 1
+                rank_str = str(prev_rank)
             row += [rank_str, prev_item.short_name or prev_item.name,
                     f'{prev_item.prev_share:.3f}']
         else:
             row += ['', '', '']
 
         if curr_item:
-            rank_str = '\u3000' if i == 0 and '中央级' in curr_item.name else str(i+1 if i > 0 else '')
             if '中央级' in curr_item.name:
                 rank_str = '\u3000'
+            else:
+                curr_rank += 1
+                rank_str = str(curr_rank)
             row += [rank_str, curr_item.short_name or curr_item.name,
                     f'{curr_item.current_share:.3f}']
         else:
@@ -609,11 +629,74 @@ def build_channel_ranking(prs, data: ReportData, page_num=3):
     curr_sorted = sorted(rankings, key=lambda x: x.current_share, reverse=True)
     prev_sorted = sorted(rankings, key=lambda x: x.prev_share, reverse=True)
 
-    # 只显示前16名
-    n_display = min(16, len(rankings))
+    # 构建展示行：前 10 + 分隔行 + CCTV-17 前1位 + CCTV-17 + 后2位
+    TOP_N = 10
+    top_prev = prev_sorted[:TOP_N]
+    top_curr = curr_sorted[:TOP_N]
+
+    # 在当日排名中查找 CCTV-17 的位置
+    cctv17_curr_idx = -1
+    for idx, item in enumerate(curr_sorted):
+        if '农业农村' in item.name or 'CCTV-17' in item.name:
+            cctv17_curr_idx = idx
+            break
+
+    # 在前日排名中查找 CCTV-17 的位置
+    cctv17_prev_idx = -1
+    for idx, item in enumerate(prev_sorted):
+        if '农业农村' in item.name or 'CCTV-17' in item.name:
+            cctv17_prev_idx = idx
+            break
+
+    # 如果 CCTV-17 已在前10，不需要分隔行和底部区域
+    if cctv17_curr_idx >= 0 and cctv17_curr_idx < TOP_N:
+        # CCTV-17 已在 top 10 中，只展示前 10
+        display_rows = []
+        for i in range(TOP_N):
+            p = prev_sorted[i] if i < len(prev_sorted) else None
+            c = curr_sorted[i] if i < len(curr_sorted) else None
+            display_rows.append(('data', i, p, i, c))
+    else:
+        # 前 10 展示
+        display_rows = []
+        for i in range(min(TOP_N, len(rankings))):
+            p = prev_sorted[i] if i < len(prev_sorted) else None
+            c = curr_sorted[i] if i < len(curr_sorted) else None
+            display_rows.append(('data', i, p, i, c))
+
+        # 分隔行
+        display_rows.append(('separator', None, None, None, None))
+
+        # 底部 4 行：CCTV-17 前 1 位 + CCTV-17 + 后 2 位
+        if cctv17_curr_idx >= 0:
+            # 当日侧：前 1 位 + CCTV-17 + 后 2 位
+            curr_start = max(0, cctv17_curr_idx - 1)
+            curr_indices = list(range(curr_start, min(curr_start + 4, len(curr_sorted))))
+            # 确保 CCTV-17 在其中
+            if cctv17_curr_idx not in curr_indices:
+                curr_indices = list(range(cctv17_curr_idx, min(cctv17_curr_idx + 3, len(curr_sorted))))
+        else:
+            curr_indices = []
+
+        if cctv17_prev_idx >= 0:
+            # 前日侧：前 1 位 + CCTV-17 + 后 2 位
+            prev_start = max(0, cctv17_prev_idx - 1)
+            prev_indices = list(range(prev_start, min(prev_start + 4, len(prev_sorted))))
+            if cctv17_prev_idx not in prev_indices:
+                prev_indices = list(range(cctv17_prev_idx, min(cctv17_prev_idx + 3, len(prev_sorted))))
+        else:
+            prev_indices = []
+
+        n_bottom = max(len(curr_indices), len(prev_indices))
+        for j in range(n_bottom):
+            pi = prev_indices[j] if j < len(prev_indices) else None
+            ci = curr_indices[j] if j < len(curr_indices) else None
+            p = prev_sorted[pi] if pi is not None and pi < len(prev_sorted) else None
+            c = curr_sorted[ci] if ci is not None and ci < len(curr_sorted) else None
+            display_rows.append(('data', pi, p, ci, c))
 
     headers = ['排名', '频道', '市场份额%', '排名', '频道', '市场份额%', '较前一日变化']
-    n_rows = n_display + 2
+    n_rows = len(display_rows) + 2  # date header + col header + data
     n_cols = 7
 
     tbl_left = Cm(0.5)
@@ -647,9 +730,15 @@ def build_channel_ranking(prs, data: ReportData, page_num=3):
                     bold=True, bg_color=Colors.TABLE_ROW_EVEN)
 
     # 数据行
-    for i in range(n_display):
-        prev_item = prev_sorted[i] if i < len(prev_sorted) else None
-        curr_item = curr_sorted[i] if i < len(curr_sorted) else None
+    for i, (row_type, prev_idx, prev_item, curr_idx, curr_item) in enumerate(display_rows):
+        row_idx = i + 2
+
+        if row_type == 'separator':
+            for j in range(7):
+                table.cell(row_idx, j).text = '—'
+                _style_cell(table.cell(row_idx, j), Fonts.TABLE_BODY_SIZE,
+                           Colors.DARK_GRAY, bold=False, bg_color=Colors.TABLE_ROW_EVEN)
+            continue
 
         is_hl = False
         if curr_item and ('农业农村' in curr_item.name or 'CCTV-17' in curr_item.name):
@@ -657,16 +746,14 @@ def build_channel_ranking(prs, data: ReportData, page_num=3):
         bg = Colors.TABLE_HIGHLIGHT if is_hl else \
              (Colors.TABLE_ROW_EVEN if i % 2 == 0 else Colors.TABLE_ROW_ODD)
 
-        row_idx = i + 2
-
         # 前日
-        if prev_item:
-            table.cell(row_idx, 0).text = f'{i+1} '
+        if prev_item and prev_idx is not None:
+            table.cell(row_idx, 0).text = f'{prev_idx + 1}'
             table.cell(row_idx, 1).text = prev_item.name
             table.cell(row_idx, 2).text = f'{prev_item.prev_share:.3f}'
         # 当日
-        if curr_item:
-            table.cell(row_idx, 3).text = f'{i+1} '
+        if curr_item and curr_idx is not None:
+            table.cell(row_idx, 3).text = f'{curr_idx + 1}'
             table.cell(row_idx, 4).text = curr_item.name
             table.cell(row_idx, 5).text = f'{curr_item.current_share:.3f}'
             # 变化箭头
@@ -724,12 +811,15 @@ def build_schedule_chart(prs, data: ReportData, page_num=4):
 
     categories = []
     share_vals = []
+    rating_vals = []
     for p in valid_progs:
         label = p.name[:8] if len(p.name) > 8 else p.name
-        categories.append(f'{p.start_time}\n{label}')
+        st = _format_start_time(p.start_time)
+        categories.append(f'{label}{st}')
         share_vals.append(p.market_share)
+        rating_vals.append(p.rating)
 
-    series = {'市场份额%': share_vals}
+    series = {'市场份额%': share_vals, '收视率': rating_vals}
 
     # 生成图表颜色（首播节目用深色，重播用浅色）
     chart_shape = add_column_chart(
@@ -793,7 +883,8 @@ def build_program_ranking(prs, data: ReportData, metric='rating', page_num=5):
     values = []
     for p in display:
         label = p.name[:10] if len(p.name) > 10 else p.name
-        categories.append(label)
+        st = _format_start_time(p.start_time)
+        categories.append(f'{label}{st}')
         values.append(p.rating if metric == 'rating' else p.market_share)
 
     series = {metric_name + '%': values}

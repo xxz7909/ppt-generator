@@ -15,6 +15,7 @@
 """
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -215,6 +216,20 @@ def _match_nearest(target_items, src_items):
     return mapping
 
 
+def _match_charts_by_y_order(target_items, src_items):
+    """
+    按 Y 坐标（top）排序配对图表。
+
+    最近邻匹配在图表位置偏差较大时会交叉配对（如市场份额页的
+    所有频道 vs CCTV-17 收视率条形图）。改用按 top 排序后一一
+    配对，确保上方图表匹配上方图表、下方匹配下方。
+    """
+    t_sorted = sorted(target_items, key=lambda x: x[1].top)
+    s_sorted = sorted(src_items, key=lambda x: x[1].top)
+    n = min(len(t_sorted), len(s_sorted))
+    return [(t_sorted[i][0], s_sorted[i][0]) for i in range(n)]
+
+
 # ═══════════════════════════════════════════════════════════════
 # 文本同步（XML 级）
 # ═══════════════════════════════════════════════════════════════
@@ -309,8 +324,131 @@ def _extract_chart_data(src_chart):
 def _sync_chart(target_shape, src_shape):
     try:
         target_shape.chart.replace_data(_extract_chart_data(src_shape.chart))
+        # replace_data 后恢复数据标签的数字格式（源 draft 图表带 '0.000'）
+        src_plot = src_shape.chart.plots[0]
+        tgt_plot = target_shape.chart.plots[0]
+        if src_plot.has_data_labels:
+            src_nf = src_plot.data_labels.number_format
+            src_linked = src_plot.data_labels.number_format_is_linked
+            if not src_linked and src_nf and src_nf != 'General':
+                # XML 级别：先移除所有旧的 <c:numFmt>，再设置新值
+                # 避免 python-pptx 追加导致多个 numFmt 共存（WPS 取第一个）
+                C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
+                cs = target_shape.chart._chartSpace
+                for dLbls in cs.findall(f'.//{{{C_NS}}}dLbls'):
+                    for old_nf in dLbls.findall(f'{{{C_NS}}}numFmt'):
+                        dLbls.remove(old_nf)
+                tgt_plot.has_data_labels = True
+                tgt_plot.data_labels.number_format = src_nf
+                tgt_plot.data_labels.number_format_is_linked = False
+                # 同步 numCache 的 formatCode（WPS 用它来格式化显示值）
+                for nc in cs.findall(f'.//{{{C_NS}}}numCache'):
+                    fc_elem = nc.find(f'{{{C_NS}}}formatCode')
+                    if fc_elem is not None:
+                        fc_elem.text = src_nf
     except (AttributeError, TypeError):
         pass
+
+
+def _sync_combo_chart(target_shape, src_shape):
+    """同步组合图表（柱状+折线），XML 级别替换数据，保留双图表结构。
+
+    target 是从 demo 拷贝来的组合图表（barChart + lineChart），
+    src 是 draft 生成的纯柱状图（barChart 含两个 series：市场份额% 和 收视率）。
+    本函数：
+      1. 从 src 提取 categories、bar values (series 0)、line values (series 1)
+      2. 在 target 的 barChart/ser 和 lineChart/ser 中替换 strCache 和 numCache
+      3. 更新 ptCount 以匹配新数据长度
+    """
+    C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
+    try:
+        src_chart = src_shape.chart
+        tgt_chart = target_shape.chart
+
+        # --- 从 src 提取数据 ---
+        src_categories = []
+        src_bar_vals = []
+        src_line_vals = []
+
+        try:
+            src_categories = [
+                _sanitize(str(c.label)) if c.label is not None else ''
+                for c in src_chart.plots[0].categories
+            ]
+        except (AttributeError, TypeError, IndexError):
+            pass
+
+        # Series 0 = 市场份额 (bar), Series 1 = 收视率 (line)
+        for i, ser in enumerate(src_chart.series):
+            vals = list(ser.values) if ser.values else []
+            if i == 0:
+                src_bar_vals = vals
+            elif i == 1:
+                src_line_vals = vals
+
+        n = len(src_categories)
+        if n == 0:
+            return
+
+        # --- XML 级替换 ---
+        tgt_cs = tgt_chart._chartSpace
+        pa = tgt_cs.find(f'.//{{{C_NS}}}plotArea')
+
+        bar_chart = pa.find(f'{{{C_NS}}}barChart')
+        line_chart = pa.find(f'{{{C_NS}}}lineChart')
+
+        def _replace_cache(ser_elem, categories, values, is_num=False):
+            """替换一个 <c:ser> 下的 strCache (cat) 和 numCache (val)"""
+            # 替换分类 strCache
+            cat_elem = ser_elem.find(f'{{{C_NS}}}cat')
+            if cat_elem is not None:
+                str_ref = cat_elem.find(f'{{{C_NS}}}strRef')
+                if str_ref is not None:
+                    old_cache = str_ref.find(f'{{{C_NS}}}strCache')
+                    if old_cache is not None:
+                        str_ref.remove(old_cache)
+                    new_cache = etree.SubElement(str_ref, f'{{{C_NS}}}strCache')
+                    pt_count = etree.SubElement(new_cache, f'{{{C_NS}}}ptCount')
+                    pt_count.set('val', str(len(categories)))
+                    for idx, cat_text in enumerate(categories):
+                        pt = etree.SubElement(new_cache, f'{{{C_NS}}}pt')
+                        pt.set('idx', str(idx))
+                        v = etree.SubElement(pt, f'{{{C_NS}}}v')
+                        v.text = cat_text
+
+            # 替换数据 numCache
+            val_elem = ser_elem.find(f'{{{C_NS}}}val')
+            if val_elem is not None:
+                num_ref = val_elem.find(f'{{{C_NS}}}numRef')
+                if num_ref is not None:
+                    old_cache = num_ref.find(f'{{{C_NS}}}numCache')
+                    if old_cache is not None:
+                        num_ref.remove(old_cache)
+                    new_cache = etree.SubElement(num_ref, f'{{{C_NS}}}numCache')
+                    fmt = etree.SubElement(new_cache, f'{{{C_NS}}}formatCode')
+                    fmt.text = '0.000'
+                    pt_count = etree.SubElement(new_cache, f'{{{C_NS}}}ptCount')
+                    pt_count.set('val', str(len(values)))
+                    for idx, val in enumerate(values):
+                        pt = etree.SubElement(new_cache, f'{{{C_NS}}}pt')
+                        pt.set('idx', str(idx))
+                        v_elem = etree.SubElement(pt, f'{{{C_NS}}}v')
+                        v_elem.text = str(val) if val is not None else '0'
+
+        # 替换 barChart 数据
+        if bar_chart is not None:
+            bar_ser = bar_chart.find(f'{{{C_NS}}}ser')
+            if bar_ser is not None:
+                _replace_cache(bar_ser, src_categories, src_bar_vals)
+
+        # 替换 lineChart 数据
+        if line_chart is not None:
+            line_ser = line_chart.find(f'{{{C_NS}}}ser')
+            if line_ser is not None:
+                _replace_cache(line_ser, src_categories, src_line_vals)
+
+    except (AttributeError, TypeError) as e:
+        print(f'[WARN] _sync_combo_chart error: {e}')
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -740,6 +878,418 @@ def _sync_and_position_audience(target_slide, src_slide):
                 _replace_para_text(paras[0], leg_text)
 
 
+def _fix_change_pct_colors(slide):
+    """
+    修正市场份额页（第3页）表格中变化百分比的字体颜色。
+
+    规则（匹配 demo 风格）：
+    - 正值（提升）→ 红色 FF0000
+    - 负值（下降）→ 绿色 00B050
+    - 零值 → 不改
+    """
+    COLOR_UP = 'FF0000'
+    COLOR_DOWN = '00B050'
+
+    for shp in slide.shapes:
+        if not getattr(shp, 'has_table', False):
+            continue
+        tbl = shp.table
+        for r in range(len(tbl.rows)):
+            for c in range(len(tbl.columns)):
+                cell = tbl.cell(r, c)
+                text = cell.text.strip()
+                if not text:
+                    continue
+                # 匹配变化百分比单元格：如 "+7%", "-8%", "6%"
+                m = re.match(r'^([+-]?)(\d+\.?\d*)%$', text)
+                if not m:
+                    continue
+                sign = m.group(1)
+                val = float(m.group(2))
+                if val == 0:
+                    continue
+                # 无符号正数或 + 号 → 提升（红），- 号 → 下降（绿）
+                color = COLOR_DOWN if sign == '-' else COLOR_UP
+                # XML 级别修改 run 字体颜色
+                tc = cell._tc
+                for run in tc.findall(f'.//{{{A_NS}}}r'):
+                    rpr = run.find(f'{{{A_NS}}}rPr')
+                    if rpr is None:
+                        rpr = etree.SubElement(run, f'{{{A_NS}}}rPr')
+                        # 插入到 <a:t> 之前
+                        t_elem = run.find(f'{{{A_NS}}}t')
+                        if t_elem is not None:
+                            run.remove(rpr)
+                            run.insert(list(run).index(t_elem), rpr)
+                    # 移除旧的 solidFill
+                    old_fill = rpr.find(f'{{{A_NS}}}solidFill')
+                    if old_fill is not None:
+                        rpr.remove(old_fill)
+                    # 添加新颜色
+                    fill = etree.SubElement(rpr, f'{{{A_NS}}}solidFill')
+                    clr = etree.SubElement(fill, f'{{{A_NS}}}srgbClr')
+                    clr.set('val', color)
+
+
+def _load_threshold_config():
+    """
+    从模板配置文件 demo_layout_config.json 读取台组排名页（第 4 页）
+    橘色阈值线的颜色和阈值文本。
+
+    颜色来源：slideNo=4 中名为 "文本框 10" 的文本框字体颜色（与线同色）。
+    阈值来源：同一文本框的文本内容（如 "0.83%"）。
+
+    返回 (color_hex, threshold_text, threshold_value)
+    """
+    config_path = Path(__file__).parent / 'demo_layout_config.json'
+    default_color = 'ED7D31'
+    default_text = '0.83%'
+    default_value = 0.83
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        color = default_color
+        text = default_text
+        for slide_cfg in config.get('slides', []):
+            if slide_cfg.get('slideNo') != 4:
+                continue
+            for ts in slide_cfg.get('textShapes', []):
+                if ts.get('name') == '文本框 10':
+                    # 读取阈值文本
+                    raw_text = ts.get('text', '').strip()
+                    if raw_text:
+                        text = raw_text
+                    for para in ts.get('paragraphs', []):
+                        for run in para.get('runs', []):
+                            rgb = run.get('colorRGB')
+                            if rgb and len(rgb) == 3:
+                                color = f'{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}'
+        # 解析阈值数值
+        m = re.match(r'([\d.]+)', text)
+        value = float(m.group(1)) if m else default_value
+        return color, text, value
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        return default_color, default_text, default_value
+
+
+def _fix_org_ranking_page(slide, threshold_color='ED7D31',
+                          threshold_text='0.83%', threshold_value=0.83):
+    """
+    修正台组内排名页（第 4 页，slide_index=3）：
+
+    1. CCTV-17（农业农村）行设置绿色字体（5B7F5B）
+    2. 橘色阈值线（直接连接符 10）定位到右侧排名中市场份额
+       跨越阈值的行边界，标签（文本框 10）恢复阈值文本
+
+    :param slide: 目标幻灯片
+    :param threshold_color: 阈值线/标签颜色（从模板配置文件读取），如 'ED7D31'
+    :param threshold_text: 阈值标签文本，如 '0.83%'
+    :param threshold_value: 阈值数值，如 0.83
+    """
+    GREEN_FONT = '5B7F5B'
+
+    table_shape = None
+    connector = None
+    label_box = None
+
+    for shp in slide.shapes:
+        if getattr(shp, 'has_table', False):
+            table_shape = shp
+        elif shp.name == '直接连接符 10':
+            connector = shp
+        elif shp.name == '文本框 10':
+            label_box = shp
+
+    if not table_shape:
+        return
+
+    tbl = table_shape.table
+    n_rows = len(tbl.rows)
+    n_cols = len(tbl.columns)
+
+    # ── 查找含 CCTV-17 的行 和 阈值跨越行 ──
+    cctv17_all_rows = set()     # 任意列含 CCTV-17 的行
+    threshold_row = -1          # 右侧排名中第一个 < 阈值的行
+
+    for r in range(2, n_rows):  # 跳过日期 + 列头
+        for c in range(n_cols):
+            cell_text = tbl.cell(r, c).text
+            if '农业农村' in cell_text or 'CCTV-17' in cell_text:
+                cctv17_all_rows.add(r)
+        # 右侧份额列（col 5）：找第一个 < 阈值的行
+        if threshold_row < 0:
+            try:
+                share_val = float(tbl.cell(r, 5).text)
+                if share_val < threshold_value:
+                    threshold_row = r
+            except (ValueError, TypeError):
+                pass
+
+    # ── 1. 绿色字体 ──
+    for r in cctv17_all_rows:
+        for c in range(n_cols):
+            tc = tbl.cell(r, c)._tc
+            # 处理所有 <a:r> 的 rPr：设置绿色 + 加粗
+            for run in tc.findall(f'.//{{{A_NS}}}r'):
+                rpr = run.find(f'{{{A_NS}}}rPr')
+                if rpr is None:
+                    rpr = etree.SubElement(run, f'{{{A_NS}}}rPr')
+                    t_elem = run.find(f'{{{A_NS}}}t')
+                    if t_elem is not None:
+                        run.remove(rpr)
+                        run.insert(list(run).index(t_elem), rpr)
+                # 移除旧 solidFill，添加绿色
+                for old in rpr.findall(f'{{{A_NS}}}solidFill'):
+                    rpr.remove(old)
+                fill = etree.SubElement(rpr, f'{{{A_NS}}}solidFill')
+                clr = etree.SubElement(fill, f'{{{A_NS}}}srgbClr')
+                clr.set('val', GREEN_FONT)
+                # 加粗
+                rpr.set('b', '1')
+
+            # 处理 defRPr：移除冲突颜色
+            for defrpr in tc.findall(f'.//{{{A_NS}}}defRPr'):
+                for old in defrpr.findall(f'{{{A_NS}}}solidFill'):
+                    defrpr.remove(old)
+
+            # 处理 endParaRPr：设置绿色 + 加粗
+            for eprpr in tc.findall(f'.//{{{A_NS}}}endParaRPr'):
+                for old in eprpr.findall(f'{{{A_NS}}}solidFill'):
+                    eprpr.remove(old)
+                fill = etree.SubElement(eprpr, f'{{{A_NS}}}solidFill')
+                clr = etree.SubElement(fill, f'{{{A_NS}}}srgbClr')
+                clr.set('val', GREEN_FONT)
+                eprpr.set('b', '1')
+
+    # ── 2. 重新定位橘色阈值线和标签 ──
+    if threshold_row < 0 or not connector:
+        return
+
+    # 从表格 XML 累加行高计算阈值跨越行的上沿 Y 坐标
+    tbl_xml = table_shape._element.find(f'.//{{{A_NS}}}tbl')
+    if tbl_xml is None:
+        return
+
+    trs = tbl_xml.findall(f'{{{A_NS}}}tr')
+    cum_y = table_shape.top
+    for idx in range(threshold_row):
+        cum_y += int(trs[idx].get('h', 0))
+
+    target_y = cum_y  # 阈值跨越行上沿（线放在此处）
+
+    # 更新连接符位置（仅调整 Y，X / 宽度不变）
+    connector.top = target_y
+
+    # 更新标签文本框位置（保持在线上方的固定偏移）+ 恢复阈值文本
+    if label_box:
+        LABEL_ABOVE_LINE = 137093   # demo 中标签比线高约 137 kEMU
+        label_box.top = target_y - LABEL_ABOVE_LINE
+        # 恢复阈值标签文本（text sync 可能把 demo 的值覆盖了）
+        if label_box.has_text_frame:
+            for para in label_box.text_frame.paragraphs:
+                for run in para.runs:
+                    run.text = threshold_text
+                    break
+                break
+
+
+def _fix_channel_ranking_page(slide):
+    """
+    修正上星频道排名页（第 5 页，slide_index=4）：
+
+    1. 箭头列（col 6）：↑ 标红（FF0000），↓ 保持黑色
+    2. CCTV-17（农业农村）行：全行字体设为红色（FF0000）+ 加粗
+    """
+    RED = 'FF0000'
+
+    for shp in slide.shapes:
+        if not getattr(shp, 'has_table', False):
+            continue
+        tbl = shp.table
+        n_rows = len(tbl.rows)
+        n_cols = len(tbl.columns)
+
+        # ── 查找 CCTV-17 所在行 ──
+        cctv17_rows = set()
+        for r in range(2, n_rows):
+            for c in range(n_cols):
+                t = tbl.cell(r, c).text
+                if '农业农村' in t or 'CCTV-17' in t:
+                    cctv17_rows.add(r)
+
+        for r in range(2, n_rows):
+            # ── 箭头列上色 ──
+            if n_cols >= 7:
+                arrow_text = tbl.cell(r, 6).text.strip()
+                if arrow_text == '↑':
+                    _set_cell_font_color(tbl.cell(r, 6), RED)
+                elif arrow_text == '↓':
+                    _set_cell_font_color(tbl.cell(r, 6), '000000')
+
+            # ── CCTV-17 行：清除继承自 demo 的红色，恢复为黑色 ──
+            is_cctv17 = any('农业农村' in tbl.cell(r, c).text or 'CCTV-17' in tbl.cell(r, c).text
+                            for c in range(n_cols))
+            if is_cctv17:
+                for c in range(min(6, n_cols)):  # col 0-5，箭头列已单独处理
+                    _set_cell_font_color(tbl.cell(r, c), '000000')
+
+
+def _set_cell_font_color(cell, color_hex, bold=None):
+    """设置单元格所有 run / endParaRPr 的字体颜色，可选加粗"""
+    tc = cell._tc
+    for run in tc.findall(f'.//{{{A_NS}}}r'):
+        rpr = run.find(f'{{{A_NS}}}rPr')
+        if rpr is None:
+            rpr = etree.SubElement(run, f'{{{A_NS}}}rPr')
+            t_elem = run.find(f'{{{A_NS}}}t')
+            if t_elem is not None:
+                run.remove(rpr)
+                run.insert(list(run).index(t_elem), rpr)
+        for old in rpr.findall(f'{{{A_NS}}}solidFill'):
+            rpr.remove(old)
+        fill = etree.SubElement(rpr, f'{{{A_NS}}}solidFill')
+        clr = etree.SubElement(fill, f'{{{A_NS}}}srgbClr')
+        clr.set('val', color_hex)
+        if bold is not None:
+            rpr.set('b', '1' if bold else '0')
+
+    # defRPr：移除冲突颜色
+    for defrpr in tc.findall(f'.//{{{A_NS}}}defRPr'):
+        for old in defrpr.findall(f'{{{A_NS}}}solidFill'):
+            defrpr.remove(old)
+
+    # endParaRPr
+    for eprpr in tc.findall(f'.//{{{A_NS}}}endParaRPr'):
+        for old in eprpr.findall(f'{{{A_NS}}}solidFill'):
+            eprpr.remove(old)
+        fill = etree.SubElement(eprpr, f'{{{A_NS}}}solidFill')
+        clr = etree.SubElement(fill, f'{{{A_NS}}}srgbClr')
+        clr.set('val', color_hex)
+        if bold is not None:
+            eprpr.set('b', '1' if bold else '0')
+
+
+def _fix_chart_max_annotation(target_slide, annotation_name=None, num_format=':.3f'):
+    """
+    通用：更新图表超轴最大值标注文本框。
+
+    在 target_slide 上找到柱状图（barChart），取第一个 series 的最大值与
+    坐标轴最大值比较。如果超出则在指定文本框写入最大值，否则清空。
+
+    annotation_name: 标注文本框名称（如 '文本框 23'、'文本框 2'），
+                     为 None 时自动搜索。
+    num_format: 数字格式字符串，如 ':.3f' 或 ':.4f'。
+    """
+    C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
+
+    chart_shape = None
+    for shp in target_slide.shapes:
+        if shp.has_chart:
+            chart_shape = shp
+            break
+    if not chart_shape:
+        return
+
+    cs = chart_shape.chart._chartSpace
+    pa = cs.find(f'.//{{{C_NS}}}plotArea')
+    bar_chart = pa.find(f'{{{C_NS}}}barChart')
+    if bar_chart is None:
+        return
+
+    # 获取 barChart 绑定的值轴最大值
+    axis_max = None
+    bar_ax_ids = [ax.get('val') for ax in bar_chart.findall(f'{{{C_NS}}}axId')]
+    for vax in pa.findall(f'{{{C_NS}}}valAx'):
+        ax_id = vax.find(f'{{{C_NS}}}axId').get('val')
+        if ax_id in bar_ax_ids:
+            scl = vax.find(f'{{{C_NS}}}scaling')
+            mx = scl.find(f'{{{C_NS}}}max') if scl is not None else None
+            if mx is not None:
+                axis_max = float(mx.get('val'))
+            break
+
+    # 取 bar series 数据最大值
+    bar_max = None
+    bar_ser = bar_chart.find(f'{{{C_NS}}}ser')
+    if bar_ser is not None:
+        val_elem = bar_ser.find(f'{{{C_NS}}}val')
+        if val_elem is not None:
+            num_ref = val_elem.find(f'{{{C_NS}}}numRef')
+            if num_ref is not None:
+                nc = num_ref.find(f'{{{C_NS}}}numCache')
+                if nc is not None:
+                    for pt in nc.findall(f'{{{C_NS}}}pt'):
+                        v = pt.find(f'{{{C_NS}}}v')
+                        if v is not None and v.text:
+                            try:
+                                fv = float(v.text)
+                                if bar_max is None or fv > bar_max:
+                                    bar_max = fv
+                            except ValueError:
+                                pass
+
+    # 找到标注文本框
+    annotation_box = None
+    for shp in target_slide.shapes:
+        if not (shp.has_text_frame and not shp.has_chart and not shp.has_table):
+            continue
+        name = shp.name or ''
+        if annotation_name and name == annotation_name:
+            annotation_box = shp
+            break
+        if annotation_name is None and '文本框' in name:
+            # 排除标题、备注等
+            txt = shp.text_frame.text.strip()
+            if not any(kw in txt for kw in ['频道', '收视', '市场', '，', '备注', '栏目', '排名']):
+                if '标题' not in name:
+                    annotation_box = shp
+                    break
+
+    if not annotation_box:
+        return
+
+    if axis_max is not None and bar_max is not None and bar_max > axis_max:
+        fmt_str = f'{{{num_format}}}'
+        text = fmt_str.format(bar_max)
+        for para in annotation_box.text_frame.paragraphs:
+            for run in para.runs:
+                run.text = text
+                break
+            break
+    else:
+        # 无超轴值：清空标注
+        for para in annotation_box.text_frame.paragraphs:
+            for run in para.runs:
+                run.text = ''
+
+
+def _fix_schedule_chart_page(target_slide, src_slide):
+    """
+    修正串单市场份额页（第 6 页，slide_index=5）：
+
+    1. 组合图表（barChart + lineChart）的数据同步：不使用 replace_data（会破坏双图结构），
+       而是 XML 级别逐 series 替换 strCache / numCache。
+    2. 超轴最大值标注文本框。
+    """
+    # ── 1. 找到 target 和 src 的图表 shape ──
+    target_chart_shape = None
+    src_chart_shape = None
+    for shp in target_slide.shapes:
+        if shp.has_chart:
+            target_chart_shape = shp
+            break
+    for shp in src_slide.shapes:
+        if shp.has_chart:
+            src_chart_shape = shp
+            break
+
+    if target_chart_shape and src_chart_shape:
+        _sync_combo_chart(target_chart_shape, src_chart_shape)
+
+    # ── 2. 超轴最大值标注 ──
+    _fix_chart_max_annotation(target_slide, annotation_name='文本框 23', num_format=':.3f')
+
+
 def _sync_slide(target_slide, src_slide, slide_index, total_slides):
     """同步单页内容"""
     # 第 1 页封面：精确替换日期和期号
@@ -773,12 +1323,17 @@ def _sync_slide(target_slide, src_slide, slide_index, total_slides):
         s_shp = src_text_map[si]
         _sync_text_shape(t_shp, s_shp)
 
-    # 图表：最近邻匹配 + 数据替换
-    src_chart_map = {idx: shp for idx, shp in src_charts}
-    for ti, si in _match_nearest(target_charts, src_charts):
-        t_shp = dict(target_charts)[ti]
-        s_shp = src_chart_map[si]
-        _sync_chart(t_shp, s_shp)
+    # 第 6 页（idx=5）串单市场份额：组合图表 + 超轴标注
+    if slide_index == 5:
+        _fix_schedule_chart_page(target_slide, src_slide)
+
+    # 图表：Y 排序匹配 + 数据替换（第 6 页走 combo chart 专用逻辑，跳过通用同步）
+    if slide_index != 5:
+        src_chart_map = {idx: shp for idx, shp in src_charts}
+        for ti, si in _match_charts_by_y_order(target_charts, src_charts):
+            t_shp = dict(target_charts)[ti]
+            s_shp = src_chart_map[si]
+            _sync_chart(t_shp, s_shp)
 
     # 表格：最近邻匹配 + 单元格文本替换
     src_table_map = {idx: shp for idx, shp in src_tables}
@@ -786,6 +1341,28 @@ def _sync_slide(target_slide, src_slide, slide_index, total_slides):
         t_shp = dict(target_tables)[ti]
         s_shp = src_table_map[si]
         _sync_table(t_shp, s_shp)
+
+    # 第 3 页（idx=2）市场份额：修正变化百分比颜色（提升=红，下降=绿）
+    if slide_index == 2:
+        _fix_change_pct_colors(target_slide)
+
+    # 第 4 页（idx=3）台组排名：CCTV-17 刷绿 + 橘色阈值线定位
+    if slide_index == 3:
+        t_color, t_text, t_value = _load_threshold_config()
+        _fix_org_ranking_page(target_slide, threshold_color=t_color,
+                              threshold_text=t_text, threshold_value=t_value)
+
+    # 第 5 页（idx=4）上星频道排名：箭头上色 + CCTV-17 行标红
+    if slide_index == 4:
+        _fix_channel_ranking_page(target_slide)
+
+    # 第 7 页（idx=6）栏目收视率排名：超轴最大值标注
+    if slide_index == 6:
+        _fix_chart_max_annotation(target_slide, annotation_name='文本框 2', num_format=':.4f')
+
+    # 第 8 页（idx=7）栏目收视份额排名：超轴最大值标注
+    if slide_index == 7:
+        _fix_chart_max_annotation(target_slide, annotation_name='文本框 2', num_format=':.3f')
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -798,6 +1375,43 @@ def _make_data_draft(excel_path, template_path):
     tmp.close()
     base.generate_report(excel_path, template_path, tmp.name)
     return tmp.name
+
+
+def _strip_comments(pptx_path):
+    """
+    从 pptx 文件中移除所有批注（comments）和批注作者信息。
+
+    操作：ZIP 级别删除 comment*.xml / commentAuthors.xml，
+    并清理 [Content_Types].xml 和 .rels 中的引用。
+    """
+    import zipfile
+    tmp_path = pptx_path + '.tmp'
+    with zipfile.ZipFile(pptx_path, 'r') as zin, \
+         zipfile.ZipFile(tmp_path, 'w', zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            name_lower = item.filename.lower()
+            # 跳过批注文件
+            if 'commentauthors' in name_lower or '/comments/' in name_lower:
+                continue
+            data = zin.read(item.filename)
+            # 清理 Content_Types.xml 中的批注引用
+            if item.filename == '[Content_Types].xml':
+                text = data.decode('utf-8')
+                text = re.sub(
+                    r'<Override[^>]*PartName="[^"]*comment[^"]*"[^>]*/>\s*',
+                    '', text, flags=re.IGNORECASE)
+                data = text.encode('utf-8')
+            # 清理 .rels 文件中的批注关系引用
+            if item.filename.endswith('.rels'):
+                text = data.decode('utf-8')
+                if 'comment' in text.lower():
+                    text = re.sub(
+                        r'<Relationship[^>]*Target="[^"]*comment[^"]*"[^>]*/>\s*',
+                        '', text, flags=re.IGNORECASE)
+                    data = text.encode('utf-8')
+            zout.writestr(item, data)
+    # 替换原文件
+    os.replace(tmp_path, pptx_path)
 
 
 def generate_report_config_driven(excel_path, template_path, output_path):
@@ -840,6 +1454,10 @@ def generate_report_config_driven(excel_path, template_path, output_path):
 
     print(f'[5/5] 保存: {output_path}')
     target.save(output_path)
+
+    # 清除从 demo 模板继承的批注（commentAuthors / comments）
+    _strip_comments(output_path)
+
     print(f'✅ 完成！共 {len(target.slides)} 张幻灯片')
 
 
