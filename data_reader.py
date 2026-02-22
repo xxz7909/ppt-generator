@@ -260,6 +260,8 @@ def read_excel_data(filepath: str) -> ReportData:
     # 读取市场份额
     if '市场份额' in sheet_names:
         _read_market_share(wb['市场份额'], data)
+        # 从市场份额H-W列读取分类观众规模（优先级高于日报-频道分类观众规模）
+        _read_audience_from_market_share(wb['市场份额'], data)
 
     # 读取电视剧与非电视剧
     if '电视剧与非电视剧' in sheet_names:
@@ -276,6 +278,8 @@ def read_excel_data(filepath: str) -> ReportData:
     # 读取串单
     if '串单' in sheet_names:
         _read_programs(wb['串单'], data)
+        # 从串单读取首播节目数据（16:30-24:00 非电视剧）
+        _read_premiere_from_schedule(wb['串单'], data)
 
     # 读取分分钟
     if '分分钟' in sheet_names:
@@ -291,11 +295,15 @@ def read_excel_data(filepath: str) -> ReportData:
         if '日报-三大剧场' in sheet_names:
             _read_theaters(wb['日报-三大剧场'], data)
         if '日报-首播节目对比' in sheet_names:
-            _read_premiere_programs(wb['日报-首播节目对比'], data)
+            # 串单已提供首播节目数据时跳过（串单数据更准确、时效性更好）
+            if not data.premiere_programs:
+                _read_premiere_programs(wb['日报-首播节目对比'], data)
         if '日报-首播节目分类观众触达' in sheet_names:
             _read_premiere_audience(wb['日报-首播节目分类观众触达'], data)
         if '日报-频道分类观众规模' in sheet_names:
-            _read_channel_audience(wb['日报-频道分类观众规模'], data)
+            # 市场份额H-W列已提供分类观众数据时跳过（数据更准确）
+            if not data.channel_audience:
+                _read_channel_audience(wb['日报-频道分类观众规模'], data)
         if '日报-电视剧观众规模' in sheet_names:
             _read_drama_audience(wb['日报-电视剧观众规模'], data)
 
@@ -410,6 +418,82 @@ def _read_market_share(ws, data: ReportData):
                 ms.share_change = _safe_float(last_cctv[7])
                 ms.reach_change = _safe_float(last_cctv[8])
                 ms.loyalty_change = _safe_float(last_cctv[9])
+
+
+def _read_audience_from_market_share(ws, data: ReportData):
+    """从市场份额sheet H-W列读取分类观众规模
+
+    列映射 (0-indexed):
+      G(6)=观众规模(总体), H(7)=男, I(8)=女,
+      J(9)=4-14岁, K(10)=15-24岁, L(11)=25-34岁, M(12)=35-44岁,
+      N(13)=45-54岁, O(14)=55-64岁, P(15)=65岁以上,
+      Q(16)=未受过正规教育, R(17)=小学, S(18)=初中, T(19)=高中, U(20)=大学以上,
+      V(21)=城市, W(22)=乡村
+
+    行结构:
+      Row 1 = 表头
+      Row 2 = CCTV-17 前推期间均值
+      Row 3 = CCTV-17 前一天
+      Row 4 = CCTV-17 当日
+    """
+    rows = list(ws.iter_rows(min_row=1, values_only=True))
+    if len(rows) < 4:
+        return
+
+    # 找 CCTV-17 行（含"农业农村"）
+    cctv17_rows = []
+    for r in rows[1:]:
+        if r[0] and '农业农村' in str(r[0]):
+            cctv17_rows.append(r)
+    if len(cctv17_rows) < 2:
+        return
+
+    # 下标从 header 取分类名称
+    headers = rows[0]
+    # H-W = indices 7..22
+    CAT_COLS = list(range(7, 23))  # 16 categories
+    cat_names = []
+    for ci in CAT_COLS:
+        h = _safe_str(headers[ci]) if ci < len(headers) and headers[ci] else ''
+        # 去掉 "分类观众规模-" 前缀
+        h = h.replace('分类观众规模-', '')
+        cat_names.append(h)
+
+    period_row = cctv17_rows[0]    # 前推期间均值
+    current_row = cctv17_rows[-1]  # 当日
+
+    # 总体观众规模 (G列)
+    total_period = _safe_float(period_row[6]) if len(period_row) > 6 else 0
+    total_current = _safe_float(current_row[6]) if len(current_row) > 6 else 0
+
+    audience_list = []
+
+    # 总体项
+    total_item = AudienceItem()
+    total_item.category = '四岁及以上所有人'
+    total_item.period_value = total_period
+    total_item.current_value = total_current
+    if total_period > 0:
+        total_item.change = (total_current - total_period) / total_period
+    audience_list.append(total_item)
+
+    # 分类项
+    for i, ci in enumerate(CAT_COLS):
+        name = cat_names[i]
+        if not name:
+            continue
+        pv = _safe_float(period_row[ci]) if ci < len(period_row) else 0
+        cv = _safe_float(current_row[ci]) if ci < len(current_row) else 0
+        item = AudienceItem()
+        item.category = name
+        item.period_value = pv
+        item.current_value = cv
+        if pv > 0:
+            item.change = (cv - pv) / pv
+        audience_list.append(item)
+
+    if audience_list:
+        data.channel_audience = audience_list
 
 
 def _read_drama(ws, data: ReportData):
@@ -615,6 +699,78 @@ def _read_premiere_programs(ws, data: ReportData):
         if len(r) > 12 and r[12]:
             item.time_slot = _safe_str(r[12])
         data.premiere_programs.append(item)
+
+
+def _read_premiere_from_schedule(ws, data: ReportData):
+    """从串单sheet读取首播节目数据（16:30-24:00 非电视剧）
+
+    列映射:
+      A(0)=名称, F(5)=开始时间, H(7)=结束时间,
+      J(9)=类别, L(11)=市场份额%, M(12)=收视率%,
+      N(13)=前一天同时段收视率%, O(14)=前一天同时段市场份额%,
+      P(15)=前1个月同时段收视率%(可选), Q(16)=前1个月同时段市场份额%(可选)
+    """
+    rows = list(ws.iter_rows(min_row=1, values_only=True))
+    if len(rows) < 2:
+        return
+
+    import datetime as _dt
+    cutoff_start = _dt.time(16, 30, 0)
+
+    premiere_list = []
+    for r in rows[1:]:
+        if r[0] is None:
+            continue
+        # 解析开始时间
+        raw_start = r[5]
+        if raw_start is None:
+            continue
+        if isinstance(raw_start, _dt.datetime):
+            start_t = raw_start.time()
+        elif isinstance(raw_start, _dt.time):
+            start_t = raw_start
+        else:
+            continue
+        # 筛选 16:30 起
+        if start_t < cutoff_start:
+            continue
+        # 排除电视剧
+        cat = _safe_str(r[9]) if len(r) > 9 else ''
+        if '电视剧' in cat:
+            continue
+
+        # 解析结束时间
+        raw_end = r[7] if len(r) > 7 else None
+        if isinstance(raw_end, _dt.datetime):
+            end_str = raw_end.strftime('%H:%M')
+        elif isinstance(raw_end, _dt.time):
+            end_str = raw_end.strftime('%H:%M')
+        else:
+            end_str = _time_to_str(raw_end)
+
+        start_str = start_t.strftime('%H:%M')
+
+        item = PremiereProgram()
+        item.name = _safe_str(r[0])
+        item.time_slot = f'{start_str}-{end_str}'
+        item.rating = _safe_float(r[12]) if len(r) > 12 else 0
+        item.share = _safe_float(r[11]) if len(r) > 11 else 0
+        item.prev_day_rating = _safe_float(r[13]) if len(r) > 13 else 0
+        item.prev_day_share = _safe_float(r[14]) if len(r) > 14 else 0
+        # 前1个月数据（P、Q列，可选）
+        item.period_rating = _safe_float(r[15]) if len(r) > 15 else 0
+        item.period_share = _safe_float(r[16]) if len(r) > 16 else 0
+        # 计算变化（当日 vs 前一天）
+        if item.prev_day_rating and item.prev_day_rating > 0:
+            item.rating_change = round((item.rating - item.prev_day_rating) / item.prev_day_rating * 100)
+        if item.prev_day_share and item.prev_day_share > 0:
+            item.share_change = round((item.share - item.prev_day_share) / item.prev_day_share * 100)
+
+        premiere_list.append(item)
+
+    # 用串单数据替换旧的 premiere_programs
+    if premiere_list:
+        data.premiere_programs = premiere_list
 
 
 def _read_premiere_audience(ws, data: ReportData):

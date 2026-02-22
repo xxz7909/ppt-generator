@@ -1327,34 +1327,27 @@ def _fix_chart_max_annotation(target_slide, annotation_name=None, num_format=':.
 
             # 动态调整文本框位置 —— 对齐到对应柱子上方
             if ref_box is not None and n_pts > 0 and chart_shape is not None:
-                # 估算绘图区：chart shape 内部约 85% 宽度为绘图区
-                # 使用第一个文本框作为锚点反推绘图区左边界和柱宽
                 if i == 0:
                     # 第一个文本框保持原位（模板已对齐好）
                     pass
                 else:
                     ref_idx = overflow_bars[0][0]
                     ref_val = overflow_bars[0][1]
-                    # 估算每个柱子槽位宽度
-                    chart_l = chart_shape.left
+                    # 用 ref_box 的中心点反推柱宽：ref_box 对齐 bar[ref_idx]
+                    ref_center_x = ref_box.left + ref_box.width // 2
                     chart_w = chart_shape.width
-                    # 绘图区大约从 chart_left + 5% 到 chart_left + 98%
-                    plot_left = chart_l + int(chart_w * 0.05)
-                    plot_w = int(chart_w * 0.93)
-                    bar_slot = plot_w / n_pts if n_pts > 0 else 0
+                    # 柱槽宽 ≈ 绘图区宽 / 柱数，绘图区约占 chart 宽 93%
+                    bar_slot = int(chart_w * 0.93) / n_pts
 
-                    # 水平位置：对齐到 bar_idx 对应的柱子中心
-                    bar_center_x = plot_left + int((bar_idx + 0.5) * bar_slot)
+                    # bar[bar_idx] 中心 = ref_center + (bar_idx - ref_idx) * bar_slot
+                    bar_center_x = ref_center_x + int((bar_idx - ref_idx) * bar_slot)
                     box.left = bar_center_x - box.width // 2
 
                     # 垂直位置：根据溢出比例计算
-                    # ref_box 的底部约在 axis_max 线位置
                     ref_bottom = ref_box.top + ref_box.height
-                    # 溢出值越大，标注越高
-                    # ref_box 对应 ref_val 的溢出高度 = ref_box.height
                     overflow_ratio = (val - axis_max) / (ref_val - axis_max) if ref_val > axis_max else 0.5
                     annot_height = int(overflow_ratio * ref_box.height)
-                    annot_height = max(annot_height, box.height)  # 至少能放下文字
+                    annot_height = max(annot_height, box.height)
                     box.top = ref_bottom - annot_height
                     box.height = annot_height
         else:

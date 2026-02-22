@@ -1319,9 +1319,15 @@ def build_premiere_comparison(prs, data: ReportData, metric='rating', page_num=N
     if not progs:
         return slide
 
-    # 构建描述文本
+    # 判断是否有前1个月数据
+    has_period_data = any(
+        (p.period_rating > 0 if metric == 'rating' else p.period_share > 0)
+        for p in progs
+    )
+
+    # 构建描述文本（列出全部栏目）
     desc_parts = []
-    for p in progs[:3]:
+    for p in progs:
         if metric == 'loyalty':
             val = p.loyalty
             # 忠实度没有可靠的变化数据，只显示当前值
@@ -1332,13 +1338,26 @@ def build_premiere_comparison(prs, data: ReportData, metric='rating', page_num=N
         else:
             val = p.rating if metric == 'rating' else p.share
             chg = p.rating_change if metric == 'rating' else p.share_change
-            chg_pct = round(chg * 100) if abs(chg) < 10 else round(chg)
-            if abs(chg_pct) <= 3:
-                chg_str = '较前一个月均值基本持平'
+            chg_pct = round(chg) if abs(chg) >= 1 else round(chg * 100)
+            if has_period_data:
+                # 对比前1个月均值
+                if abs(chg_pct) <= 3:
+                    chg_str = '较前一个月均值基本持平'
+                else:
+                    chg_str = f'{"下降" if chg_pct < 0 else "提升"}{abs(chg_pct)}%'
             else:
-                chg_str = f'{"下降" if chg_pct < 0 else "提升"}{abs(chg_pct)}%'
+                # 对比前一天
+                if abs(chg_pct) <= 3:
+                    chg_str = '较前一天基本持平'
+                else:
+                    chg_str = f'{"下降" if chg_pct < 0 else "提升"}{abs(chg_pct)}%'
             desc_parts.append(f'《{p.name}》{val:.3f}%，{chg_str}')
-    desc = (f'{data.report_date_short}，对比前一个月均值，首播栏目{metric_label}中，'
+
+    if has_period_data:
+        compare_label = '对比前一个月均值'
+    else:
+        compare_label = '对比前一天'
+    desc = (f'{data.report_date_short}，{compare_label}，首播栏目{metric_label}中，'
             + '，'.join(desc_parts) + '。')
     add_textbox(slide, Cm(1.5), Cm(2.0), Cm(30), Cm(2),
                 desc, font_size=Pt(9), font_color=Colors.MEDIUM_GRAY)
@@ -1347,27 +1366,45 @@ def build_premiere_comparison(prs, data: ReportData, metric='rating', page_num=N
     categories = [f'{p.name}\n{p.time_slot}' if p.time_slot else p.name for p in progs]
 
     if metric == 'rating':
-        series = {
-            '前1个月均值': [p.period_rating for p in progs],
-            '前一日': [p.prev_day_rating for p in progs],
-            data.report_date_short: [p.rating for p in progs],
-        }
+        if has_period_data:
+            series = {
+                '前1个月均值': [p.period_rating for p in progs],
+                '前一日': [p.prev_day_rating for p in progs],
+                data.report_date_short: [p.rating for p in progs],
+            }
+            series_colors = [Colors.CHART_SERIES[0], Colors.CHART_SERIES[3],
+                             Colors.CHART_SERIES[1]]
+        else:
+            series = {
+                '前一日': [p.prev_day_rating for p in progs],
+                data.report_date_short: [p.rating for p in progs],
+            }
+            series_colors = [Colors.CHART_SERIES[3], Colors.CHART_SERIES[1]]
     elif metric == 'share':
-        series = {
-            '前1个月均值': [p.period_share for p in progs],
-            '前一日': [p.prev_day_share for p in progs],
-            data.report_date_short: [p.share for p in progs],
-        }
+        if has_period_data:
+            series = {
+                '前1个月均值': [p.period_share for p in progs],
+                '前一日': [p.prev_day_share for p in progs],
+                data.report_date_short: [p.share for p in progs],
+            }
+            series_colors = [Colors.CHART_SERIES[0], Colors.CHART_SERIES[3],
+                             Colors.CHART_SERIES[1]]
+        else:
+            series = {
+                '前一日': [p.prev_day_share for p in progs],
+                data.report_date_short: [p.share for p in progs],
+            }
+            series_colors = [Colors.CHART_SERIES[3], Colors.CHART_SERIES[1]]
     else:
         # 忠实度 - 使用计算的loyalty值，只显示当前值(历史数据需额外数据)
         series = {
             data.report_date_short: [p.loyalty for p in progs],
         }
+        series_colors = [Colors.CHART_SERIES[1]]
 
     add_column_chart(slide, Cm(0.5), Cm(4.0), Cm(32), Cm(12),
                      categories, series,
-                     series_colors=[Colors.CHART_SERIES[0], Colors.CHART_SERIES[3],
-                                    Colors.CHART_SERIES[1]],
+                     series_colors=series_colors,
                      show_data_labels=True)
 
     return slide
