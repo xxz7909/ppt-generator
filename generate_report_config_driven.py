@@ -122,7 +122,10 @@ def _replace_para_text(target_p, new_text):
                     _set_run_text(r, '')
     else:
         # 无 br：全部文本写入第一个 run，清空其余
-        _set_run_text(runs[0], new_text)
+        # 若源文本含 \n（来自 <a:br>）但目标无 <a:br>，只取第一行，
+        # 避免将后续行重复写入（其余目标段落保持原样）
+        text_to_write = new_text.split('\n')[0] if '\n' in new_text else new_text
+        _set_run_text(runs[0], text_to_write)
         for r in runs[1:]:
             _set_run_text(r, '')
 
