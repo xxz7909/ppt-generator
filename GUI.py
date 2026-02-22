@@ -81,13 +81,21 @@ def _make_output_name(excel_path: str, output_dir: str) -> str:
 
 
 def _find_demo_template() -> str | None:
-    """在 output_ppt 目录下自动查找含 'demo' 的 pptx 文件"""
-    d = _DEFAULT_OUTPUT_DIR
-    if not d.exists():
-        return None
-    for f in sorted(d.iterdir()):
-        if f.suffix.lower() == '.pptx' and 'demo' in f.name.lower() and not f.name.startswith('~$'):
-            return str(f)
+    """在多个候选目录下自动查找含 'demo' 的 pptx 文件"""
+    # 候选搜索目录：exe所在目录及其父目录的 output_ppt/，以及当前工作目录
+    candidates = [
+        _BASE_DIR / 'output_ppt',
+        _BASE_DIR.parent / 'output_ppt',
+        Path.cwd() / 'output_ppt',
+        _BASE_DIR,
+        _BASE_DIR.parent,
+    ]
+    for d in candidates:
+        if not d.exists():
+            continue
+        for f in sorted(d.iterdir()):
+            if f.suffix.lower() == '.pptx' and 'demo' in f.name.lower() and not f.name.startswith('~$'):
+                return str(f)
     return None
 
 
@@ -155,11 +163,15 @@ class App:
         frame_tpl = tk.LabelFrame(root, text=' Demo 模板 ', font=('微软雅黑', 10, 'bold'))
         frame_tpl.pack(fill='x', **pad)
 
-        self.var_template = tk.StringVar(value=self.cfg.get('template', '') or _find_demo_template() or '')
-        tk.Entry(frame_tpl, textvariable=self.var_template,
-                 font=('微软雅黑', 9)).pack(side='left', fill='x', expand=True, padx=4, pady=6)
+        auto_tpl = self.cfg.get('template', '') or _find_demo_template() or ''
+        self.var_template = tk.StringVar(value=auto_tpl)
+        entry_tpl = tk.Entry(frame_tpl, textvariable=self.var_template, font=('微软雅黑', 9))
+        entry_tpl.pack(side='left', fill='x', expand=True, padx=4, pady=6)
         tk.Button(frame_tpl, text='浏览...', command=self._browse_template,
                   font=('微软雅黑', 9)).pack(side='right', padx=4, pady=6)
+        if not auto_tpl:
+            tk.Label(frame_tpl, text='⚠ 未找到 demo 模板，请手动浏览选择',
+                     fg='#cc6600', font=('微软雅黑', 8)).pack(side='bottom', anchor='w', padx=4)
 
         # ── 输出 ──
         frame_out = tk.LabelFrame(root, text=' 输出 PPT ', font=('微软雅黑', 10, 'bold'))
