@@ -912,6 +912,12 @@ def build_program_ranking(prs, data: ReportData, metric='rating', page_num=5):
 # 幻灯片构建 - 分分钟收视率/市场份额
 # ═══════════════════════════════════════════════════════════════
 
+def _time_to_minutes(t):
+    """将 HH:MM 时间转为从00:00起的分钟数（支持 24+小时制，如 25:30=1530）"""
+    parts = t.split(':')
+    return int(parts[0]) * 60 + int(parts[1])
+
+
 def build_minute_chart(prs, data: ReportData, metric='share', page_num=7):
     """构建分分钟面积图"""
     slide = _add_slide(prs)
@@ -924,34 +930,33 @@ def build_minute_chart(prs, data: ReportData, metric='share', page_num=7):
     if not minutes:
         return slide
 
-    # 筛选 6:00-24:00 的数据
-    filtered = []
-    for m in minutes:
-        try:
-            hour = int(m.time_str.split(':')[0])
-            if 6 <= hour <= 23:
-                filtered.append(m)
-        except:
-            filtered.append(m)
+    # 筛选 05:30 ~ 25:59（对应 demo 中的 05:30~01:59）每分钟数据，不采样
+    filtered = [m for m in minutes
+                if _time_to_minutes(m.time_str) >= 330]  # >= 05:30
 
     if not filtered:
         filtered = minutes
 
-    # 每5分钟采样以减少数据量
-    sampled = filtered[::3]  # 每3分钟采样
-
-    categories = [m.time_str for m in sampled]
+    # 图表分类标签：24+ 小时转为次日格式（25:30 → 01:30）
+    categories = []
+    for m in filtered:
+        h, mn = m.time_str.split(':')[:2]
+        h_int = int(h)
+        if h_int >= 24:
+            categories.append(f'{h_int - 24:02d}:{mn}')
+        else:
+            categories.append(f'{h}:{mn}')
 
     if metric == 'rating':
         series = {
-            '前1个月均值': [m.period_rating for m in sampled],
-            data.report_date_short: [m.current_rating for m in sampled],
+            '前1个月均值': [m.period_rating for m in filtered],
+            data.report_date_short: [m.current_rating for m in filtered],
         }
         colors = [Colors.CHART_SERIES[0], Colors.CHART_SERIES[1]]
     else:
         series = {
-            '前1个月均值': [m.period_share for m in sampled],
-            data.report_date_short: [m.current_share for m in sampled],
+            '前1个月均值': [m.period_share for m in filtered],
+            data.report_date_short: [m.current_share for m in filtered],
         }
         colors = [Colors.CHART_SERIES[0], Colors.CHART_SERIES[1]]
 

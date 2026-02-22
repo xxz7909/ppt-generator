@@ -323,29 +323,52 @@ def _extract_chart_data(src_chart):
 
 def _sync_chart(target_shape, src_shape):
     try:
+        # 先保存 demo 模板中的数据标签数字格式（replace_data 会重置）
+        C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
+        cs = target_shape.chart._chartSpace
+        saved_nf_info = []  # [(dLbls_element, formatCode, sourceLinked)]
+        for dLbls in cs.findall(f'.//{{{C_NS}}}dLbls'):
+            nf = dLbls.find(f'{{{C_NS}}}numFmt')
+            if nf is not None:
+                saved_nf_info.append((
+                    dLbls,
+                    nf.get('formatCode', ''),
+                    nf.get('sourceLinked', '0'),
+                ))
+
         target_shape.chart.replace_data(_extract_chart_data(src_shape.chart))
-        # replace_data 后恢复数据标签的数字格式（源 draft 图表带 '0.000'）
-        src_plot = src_shape.chart.plots[0]
-        tgt_plot = target_shape.chart.plots[0]
-        if src_plot.has_data_labels:
-            src_nf = src_plot.data_labels.number_format
-            src_linked = src_plot.data_labels.number_format_is_linked
-            if not src_linked and src_nf and src_nf != 'General':
-                # XML 级别：先移除所有旧的 <c:numFmt>，再设置新值
-                # 避免 python-pptx 追加导致多个 numFmt 共存（WPS 取第一个）
-                C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
-                cs = target_shape.chart._chartSpace
-                for dLbls in cs.findall(f'.//{{{C_NS}}}dLbls'):
-                    for old_nf in dLbls.findall(f'{{{C_NS}}}numFmt'):
-                        dLbls.remove(old_nf)
-                tgt_plot.has_data_labels = True
-                tgt_plot.data_labels.number_format = src_nf
-                tgt_plot.data_labels.number_format_is_linked = False
-                # 同步 numCache 的 formatCode（WPS 用它来格式化显示值）
-                for nc in cs.findall(f'.//{{{C_NS}}}numCache'):
-                    fc_elem = nc.find(f'{{{C_NS}}}formatCode')
-                    if fc_elem is not None:
-                        fc_elem.text = src_nf
+
+        # 恢复 demo 模板的数据标签数字格式
+        if saved_nf_info:
+            # replace_data 后重新获取 chartSpace（可能被替换）
+            cs = target_shape.chart._chartSpace
+            all_dLbls = cs.findall(f'.//{{{C_NS}}}dLbls')
+            for i, (_, fmt_code, src_linked) in enumerate(saved_nf_info):
+                if i >= len(all_dLbls) or not fmt_code:
+                    continue
+                dLbls = all_dLbls[i]
+                # 移除旧 numFmt
+                for old_nf in dLbls.findall(f'{{{C_NS}}}numFmt'):
+                    dLbls.remove(old_nf)
+                # 插入保存的 numFmt
+                nf_elem = etree.SubElement(dLbls, f'{{{C_NS}}}numFmt')
+                nf_elem.set('formatCode', fmt_code)
+                nf_elem.set('sourceLinked', src_linked)
+        else:
+            # 模板无 numFmt，尝试从 draft 取
+            src_plot = src_shape.chart.plots[0]
+            tgt_plot = target_shape.chart.plots[0]
+            if src_plot.has_data_labels:
+                src_nf = src_plot.data_labels.number_format
+                src_linked = src_plot.data_labels.number_format_is_linked
+                if not src_linked and src_nf and src_nf != 'General':
+                    cs = target_shape.chart._chartSpace
+                    for dLbls in cs.findall(f'.//{{{C_NS}}}dLbls'):
+                        for old_nf in dLbls.findall(f'{{{C_NS}}}numFmt'):
+                            dLbls.remove(old_nf)
+                    tgt_plot.has_data_labels = True
+                    tgt_plot.data_labels.number_format = src_nf
+                    tgt_plot.data_labels.number_format_is_linked = False
     except (AttributeError, TypeError):
         pass
 
@@ -931,6 +954,30 @@ def _fix_change_pct_colors(slide):
                     clr.set('val', color)
 
 
+def _fix_page3_numfmt(slide):
+    """
+    强制将第 3 页所有图表的数据标签数字格式统一为 3 位小数。
+
+    demo 模板中 "图表 7"（所有频道收视率%）的 numFmt 是 #,##0.00（2 位），
+    需要改为 #,##0.000 保持与其他图表一致。
+    """
+    C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
+    TARGET_FMT = '#,##0.000_);[Red]\\(#,##0.000\\)'
+
+    for shp in slide.shapes:
+        if not shp.has_chart:
+            continue
+        cs = shp.chart._chartSpace
+        for dLbls in cs.findall(f'.//{{{C_NS}}}dLbls'):
+            nf = dLbls.find(f'{{{C_NS}}}numFmt')
+            if nf is not None:
+                fmt = nf.get('formatCode', '')
+                # 只修正 2 位小数的格式（0.00）为 3 位（0.000）
+                if '0.00' in fmt and '0.000' not in fmt:
+                    new_fmt = fmt.replace('0.00', '0.000')
+                    nf.set('formatCode', new_fmt)
+
+
 def _load_threshold_config():
     """
     从模板配置文件 demo_layout_config.json 读取台组排名页（第 4 页）
@@ -1171,13 +1218,14 @@ def _set_cell_font_color(cell, color_hex, bold=None):
 
 def _fix_chart_max_annotation(target_slide, annotation_name=None, num_format=':.3f'):
     """
-    通用：更新图表超轴最大值标注文本框。
+    通用：更新图表超轴标注文本框。
 
-    在 target_slide 上找到柱状图（barChart），取第一个 series 的最大值与
-    坐标轴最大值比较。如果超出则在指定文本框写入最大值，否则清空。
+    找到柱状图（barChart）的所有超出坐标轴最大值的数据点，
+    按从左到右顺序匹配幻灯片上已有的标注文本框，写入对应值。
+    多余的文本框清空。
 
-    annotation_name: 标注文本框名称（如 '文本框 23'、'文本框 2'），
-                     为 None 时自动搜索。
+    annotation_name: 首选标注文本框名称（如 '文本框 2'），用于仅处理一个超轴值。
+                     若为 None，则自动搜索所有候选文本框。
     num_format: 数字格式字符串，如 ':.3f' 或 ':.4f'。
     """
     C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
@@ -1208,10 +1256,10 @@ def _fix_chart_max_annotation(target_slide, annotation_name=None, num_format=':.
                 axis_max = float(mx.get('val'))
             break
 
-    # 取 bar series 数据最大值
-    bar_max = None
+    # 收集所有超出 axis_max 的数据点 (index, value)
+    overflow_bars = []
     bar_ser = bar_chart.find(f'{{{C_NS}}}ser')
-    if bar_ser is not None:
+    if bar_ser is not None and axis_max is not None:
         val_elem = bar_ser.find(f'{{{C_NS}}}val')
         if val_elem is not None:
             num_ref = val_elem.find(f'{{{C_NS}}}numRef')
@@ -1219,48 +1267,128 @@ def _fix_chart_max_annotation(target_slide, annotation_name=None, num_format=':.
                 nc = num_ref.find(f'{{{C_NS}}}numCache')
                 if nc is not None:
                     for pt in nc.findall(f'{{{C_NS}}}pt'):
+                        idx = int(pt.get('idx', '-1'))
                         v = pt.find(f'{{{C_NS}}}v')
                         if v is not None and v.text:
                             try:
                                 fv = float(v.text)
-                                if bar_max is None or fv > bar_max:
-                                    bar_max = fv
+                                if fv > axis_max:
+                                    overflow_bars.append((idx, fv))
                             except ValueError:
                                 pass
 
-    # 找到标注文本框
-    annotation_box = None
+    # 按 index 排序（对应从左到右的柱子）
+    overflow_bars.sort(key=lambda x: x[0])
+
+    # 收集候选标注文本框（排除标题、备注等），按 left 排序
+    EXCLUDE_KW = ['频道', '收视', '市场', '，', '备注', '栏目', '排名']
+    candidate_boxes = []
     for shp in target_slide.shapes:
         if not (shp.has_text_frame and not shp.has_chart and not shp.has_table):
             continue
         name = shp.name or ''
-        if annotation_name and name == annotation_name:
-            annotation_box = shp
-            break
-        if annotation_name is None and '文本框' in name:
-            # 排除标题、备注等
-            txt = shp.text_frame.text.strip()
-            if not any(kw in txt for kw in ['频道', '收视', '市场', '，', '备注', '栏目', '排名']):
-                if '标题' not in name:
-                    annotation_box = shp
-                    break
+        if '标题' in name:
+            continue
+        if '文本框' not in name:
+            continue
+        # 通过备注等文字内容排除
+        txt = shp.text_frame.text.strip()
+        if any(kw in txt for kw in EXCLUDE_KW):
+            continue
+        candidate_boxes.append(shp)
 
-    if not annotation_box:
-        return
+    # 按 left 位置排序
+    candidate_boxes.sort(key=lambda s: s.left)
 
-    if axis_max is not None and bar_max is not None and bar_max > axis_max:
-        fmt_str = f'{{{num_format}}}'
-        text = fmt_str.format(bar_max)
-        for para in annotation_box.text_frame.paragraphs:
-            for run in para.runs:
-                run.text = text
-                break
-            break
-    else:
-        # 无超轴值：清空标注
-        for para in annotation_box.text_frame.paragraphs:
-            for run in para.runs:
-                run.text = ''
+    fmt_str = f'{{{num_format}}}'
+
+    # ── 计算每个超轴柱子对应的标注位置 ──
+    # 需要图表 shape 的位置和数据点数
+    n_pts = 0
+    if bar_ser is not None:
+        val_elem = bar_ser.find(f'{{{C_NS}}}val')
+        if val_elem is not None:
+            nr = val_elem.find(f'{{{C_NS}}}numRef')
+            if nr is not None:
+                nc = nr.find(f'{{{C_NS}}}numCache')
+                if nc is not None:
+                    ptc = nc.find(f'{{{C_NS}}}ptCount')
+                    if ptc is not None:
+                        n_pts = int(ptc.get('val', '0'))
+
+    # 参考第一个文本框（已有正确位置）来推算绘图区参数
+    ref_box = candidate_boxes[0] if candidate_boxes else None
+
+    # 依次将超轴值写入对应文本框，并调整位置
+    for i, box in enumerate(candidate_boxes):
+        if i < len(overflow_bars):
+            bar_idx, val = overflow_bars[i]
+            text = fmt_str.format(val)
+
+            # 动态调整文本框位置 —— 对齐到对应柱子上方
+            if ref_box is not None and n_pts > 0 and chart_shape is not None:
+                # 估算绘图区：chart shape 内部约 85% 宽度为绘图区
+                # 使用第一个文本框作为锚点反推绘图区左边界和柱宽
+                if i == 0:
+                    # 第一个文本框保持原位（模板已对齐好）
+                    pass
+                else:
+                    ref_idx = overflow_bars[0][0]
+                    ref_val = overflow_bars[0][1]
+                    # 估算每个柱子槽位宽度
+                    chart_l = chart_shape.left
+                    chart_w = chart_shape.width
+                    # 绘图区大约从 chart_left + 5% 到 chart_left + 98%
+                    plot_left = chart_l + int(chart_w * 0.05)
+                    plot_w = int(chart_w * 0.93)
+                    bar_slot = plot_w / n_pts if n_pts > 0 else 0
+
+                    # 水平位置：对齐到 bar_idx 对应的柱子中心
+                    bar_center_x = plot_left + int((bar_idx + 0.5) * bar_slot)
+                    box.left = bar_center_x - box.width // 2
+
+                    # 垂直位置：根据溢出比例计算
+                    # ref_box 的底部约在 axis_max 线位置
+                    ref_bottom = ref_box.top + ref_box.height
+                    # 溢出值越大，标注越高
+                    # ref_box 对应 ref_val 的溢出高度 = ref_box.height
+                    overflow_ratio = (val - axis_max) / (ref_val - axis_max) if ref_val > axis_max else 0.5
+                    annot_height = int(overflow_ratio * ref_box.height)
+                    annot_height = max(annot_height, box.height)  # 至少能放下文字
+                    box.top = ref_bottom - annot_height
+                    box.height = annot_height
+        else:
+            text = ''
+        tf = box.text_frame
+        if tf.paragraphs:
+            para = tf.paragraphs[0]
+            if para.runs:
+                para.runs[0].text = text
+            elif text:
+                # 段落里没有 run —— 从第一个有 run 的文本框复制格式新建
+                from pptx.oxml.ns import qn as _qn
+                from copy import deepcopy
+                # 找一个同页有 run 的标注文本框作为样板
+                ref_para_elem = None
+                ref_run_elem = None
+                for cb in candidate_boxes:
+                    for rp in cb.text_frame.paragraphs:
+                        if rp.runs:
+                            ref_para_elem = rp._p
+                            ref_run_elem = rp.runs[0]._r
+                            break
+                    if ref_run_elem is not None:
+                        break
+                if ref_run_elem is not None:
+                    # 复制段落属性 (pPr) 以继承 defRPr（字号、粗体等）
+                    ref_pPr = ref_para_elem.find(_qn('a:pPr'))
+                    if ref_pPr is not None and para._p.find(_qn('a:pPr')) is None:
+                        para._p.insert(0, deepcopy(ref_pPr))
+                    new_r = deepcopy(ref_run_elem)
+                    new_r.find(_qn('a:t')).text = text
+                    para._p.append(new_r)
+                else:
+                    para.text = text
 
 
 def _fix_schedule_chart_page(target_slide, src_slide):
@@ -1288,6 +1416,233 @@ def _fix_schedule_chart_page(target_slide, src_slide):
 
     # ── 2. 超轴最大值标注 ──
     _fix_chart_max_annotation(target_slide, annotation_name='文本框 23', num_format=':.3f')
+
+
+# ═══════════════════════════════════════════════════════════════
+# 分分钟页覆盖表格修正（第 9、10 页，slide_index=8,9）
+# ═══════════════════════════════════════════════════════════════
+
+def _parse_time_minutes(t):
+    """HH:MM → 分钟数。支持 '1900-01-01 HH:MM:SS' 格式和 24+ 小时制"""
+    t = str(t).strip()
+    if ' ' in t:
+        t = t.split(' ')[1]  # 取时间部分
+    parts = t.replace('.', ':').split(':')
+    h, m = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+    if h < 5:
+        h += 24  # 次日凌晨归入 24+
+    return h * 60 + m
+
+
+def _group_programs(programs, max_cols=20):
+    """
+    将串单节目合并为 ≤ max_cols 个显示组。
+
+    每个节目按"开始时间"和"结束时间"确定其在时间轴上的位置与宽度。
+    首播/重播判定：下午剧场~晚间节目时段 (13:30-22:30) 的节目标记为（首播），
+    其余时段（早间、上午、午间、夜间）标记为（重播）。
+    电视剧类别的节目加"电视剧："前缀。
+
+    返回: list of dict {'name': str, 'start': int(minutes), 'end': int(minutes), 'duration': int}
+    """
+    valid = []
+    for p in programs:
+        if p.duration < 1:
+            continue
+        start_m = _parse_time_minutes(p.start_time)
+        # 排除凌晨 02:00~05:29
+        if 2 * 60 <= start_m < 5 * 60 + 30:
+            continue
+        end_m = _parse_time_minutes(p.end_time)
+
+        # 首播/重播判定：下午剧场(13:30)起到晚间节目(22:30)止为首播，其余为重播
+        if 13 * 60 + 30 <= start_m < 22 * 60 + 30:
+            suffix = '（首播）'
+        else:
+            suffix = '（重播）'
+
+        # 电视剧加前缀
+        prefix = '电视剧：' if getattr(p, 'category', '') == '电视剧' else ''
+        display_name = f'{prefix}{p.name}{suffix}'
+
+        valid.append({
+            'name': display_name,
+            'start': start_m,
+            'end': end_m,
+            'duration': max(end_m - start_m, 1),
+        })
+
+    if not valid:
+        return valid
+
+    # 合并短节目 (< 5 min) 到相邻节目
+    merged = []
+    i = 0
+    while i < len(valid):
+        grp = dict(valid[i])
+        while grp['duration'] < 5 and i + 1 < len(valid):
+            i += 1
+            nxt = valid[i]
+            if len(grp['name']) + len(nxt['name']) < 45:
+                grp['name'] = grp['name'] + '+' + nxt['name']
+            grp['end'] = nxt['end']
+            grp['duration'] = grp['end'] - grp['start']
+        merged.append(grp)
+        i += 1
+
+    # 如果还是太多列，反复合并最短的
+    while len(merged) > max_cols:
+        min_idx = min(range(len(merged)), key=lambda k: merged[k]['duration'])
+        if min_idx < len(merged) - 1:
+            nb = min_idx + 1
+        else:
+            nb = min_idx - 1
+        a, b = sorted([min_idx, nb])
+        combined_name = merged[a]['name']
+        if len(combined_name) + len(merged[b]['name']) < 45:
+            combined_name += '+' + merged[b]['name']
+        combined = {
+            'name': combined_name,
+            'start': merged[a]['start'],
+            'end': merged[b]['end'],
+            'duration': merged[b]['end'] - merged[a]['start'],
+        }
+        merged = merged[:a] + [combined] + merged[b + 1:]
+
+    return merged
+
+
+def _proportional_widths(durations, total_width):
+    """按时长占比分配列宽（EMU），确保每列至少有最小宽度"""
+    total_dur = sum(durations)
+    if total_dur <= 0:
+        n = len(durations)
+        return [total_width // n] * n
+    widths = [max(int(d / total_dur * total_width), 50000) for d in durations]
+    # 消除舍入误差
+    diff = total_width - sum(widths)
+    if widths:
+        widths[-1] += diff
+    return widths
+
+
+# 固定时段划分（分钟数）— 与频道编排一致
+_FIXED_TIME_SLOTS = [
+    ('早间节目',  6 * 60,       10 * 60),       # 06:00-10:00  240min
+    ('上午剧场', 10 * 60,       12 * 60),       # 10:00-12:00  120min
+    ('午间节目', 12 * 60,       13 * 60 + 30),  # 12:00-13:30   90min
+    ('下午剧场', 13 * 60 + 30,  17 * 60),       # 13:30-17:00  210min
+    ('傍晚节目', 17 * 60,       18 * 60 + 30),  # 17:00-18:30   90min
+    ('黄金剧场', 18 * 60 + 30,  20 * 60 + 30),  # 18:30-20:30  120min
+    ('晚间节目', 20 * 60 + 30,  22 * 60 + 30),  # 20:30-22:30  120min
+    ('夜间节目', 22 * 60 + 30,  25 * 60),       # 22:30-25:00  150min
+]
+
+
+def _fix_minute_chart_page(target_slide, data, metric='rating'):
+    """
+    修正分分钟收视率/市场份额页的 3 个覆盖表格：
+
+    1. 表头表格 (8 cols): 固定时段名称（早间节目…夜间节目）+ 按固定时段比例列宽
+    2. 分隔线表格 (8 cols, 空): 同上比例列宽（绿色竖线对齐时段边界）
+    3. 节目名称表格 (20/21 cols): 串单节目名 + 按实际开始/结束时间比例列宽
+    """
+    programs = data.programs
+    if not programs:
+        return
+
+    # ── 固定时段列宽 ──
+    slot_durations = [end - start for _, start, end in _FIXED_TIME_SLOTS]
+
+    # ── 节目分组 ──
+    prog_groups = _group_programs(programs, max_cols=20)
+    prog_durations = [g['duration'] for g in prog_groups]
+
+    # ── 找到 3 个表格并分类 ──
+    header_tbl_shape = None   # 8 cols, 有文字（表头）
+    divider_tbl_shape = None  # 8 cols, 空（分隔线）
+    prog_tbl_shape = None     # 20/21 cols（节目名）
+
+    for shp in target_slide.shapes:
+        if not getattr(shp, 'has_table', False):
+            continue
+        tbl = shp.table
+        ncols = len(tbl.columns)
+        if ncols in (20, 21):
+            prog_tbl_shape = shp
+        elif ncols == 8:
+            cell_text = tbl.rows[0].cells[0].text.strip()
+            if cell_text:
+                header_tbl_shape = shp
+            else:
+                divider_tbl_shape = shp
+
+    a_ns = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+
+    # ── 更新表头表格（固定时段名称）──
+    if header_tbl_shape:
+        tbl = header_tbl_shape.table
+        n = min(len(tbl.columns), len(_FIXED_TIME_SLOTS))
+        widths = _proportional_widths(slot_durations[:n], header_tbl_shape.width)
+
+        for ci in range(n):
+            tbl.columns[ci].width = widths[ci]
+            new_text = _FIXED_TIME_SLOTS[ci][0]  # 早间节目 / 上午剧场 / …
+            tc_elem = tbl.cell(0, ci)._tc
+            tc_body = tc_elem.find(f'.//{{{a_ns}}}txBody')
+            if tc_body is not None:
+                paras = tc_body.findall(f'{{{a_ns}}}p')
+                if paras:
+                    _replace_para_text(paras[0], new_text)
+                    for p in paras[1:]:
+                        tc_body.remove(p)
+            else:
+                tbl.cell(0, ci).text = new_text
+
+    # ── 更新分隔线表格（同比例列宽，绿线对齐）──
+    if divider_tbl_shape:
+        tbl = divider_tbl_shape.table
+        n = min(len(tbl.columns), len(_FIXED_TIME_SLOTS))
+        widths = _proportional_widths(slot_durations[:n], divider_tbl_shape.width)
+        for ci in range(n):
+            tbl.columns[ci].width = widths[ci]
+
+    # ── 更新节目名称表格 ──
+    if prog_tbl_shape and prog_groups:
+        tbl = prog_tbl_shape.table
+        ncols = len(tbl.columns)
+
+        # 判断是否有前导空列（21 列 = 1 spacer + 20 program）
+        has_spacer = (ncols == 21)
+        data_start = 1 if has_spacer else 0
+        data_cols = ncols - data_start
+
+        n = min(data_cols, len(prog_groups))
+        spacer_w = tbl.columns[0].width if has_spacer else 0
+        prog_total_w = prog_tbl_shape.width - spacer_w
+        widths = _proportional_widths(prog_durations[:n], prog_total_w)
+
+        for ci in range(n):
+            col_idx = data_start + ci
+            tbl.columns[col_idx].width = widths[ci]
+            grp = prog_groups[ci]
+            new_text = grp['name']
+            tc_elem = tbl.cell(0, col_idx)._tc
+            tc_body = tc_elem.find(f'.//{{{a_ns}}}txBody')
+            if tc_body is not None:
+                paras = tc_body.findall(f'{{{a_ns}}}p')
+                if paras:
+                    _replace_para_text(paras[0], new_text)
+                    for p in paras[1:]:
+                        tc_body.remove(p)
+            else:
+                tbl.cell(0, col_idx).text = new_text
+
+        # 多余列清空
+        for ci in range(n, data_cols):
+            col_idx = data_start + ci
+            tbl.columns[col_idx].width = 0
+            tbl.cell(0, col_idx).text = ''
 
 
 def _sync_slide(target_slide, src_slide, slide_index, total_slides):
@@ -1336,15 +1691,18 @@ def _sync_slide(target_slide, src_slide, slide_index, total_slides):
             _sync_chart(t_shp, s_shp)
 
     # 表格：最近邻匹配 + 单元格文本替换
-    src_table_map = {idx: shp for idx, shp in src_tables}
-    for ti, si in _match_nearest(target_tables, src_tables):
-        t_shp = dict(target_tables)[ti]
-        s_shp = src_table_map[si]
-        _sync_table(t_shp, s_shp)
+    # 第 9/10 页（idx=8,9）分分钟页覆盖表格由专用函数处理，跳过通用表格同步
+    if slide_index not in (8, 9):
+        src_table_map = {idx: shp for idx, shp in src_tables}
+        for ti, si in _match_nearest(target_tables, src_tables):
+            t_shp = dict(target_tables)[ti]
+            s_shp = src_table_map[si]
+            _sync_table(t_shp, s_shp)
 
-    # 第 3 页（idx=2）市场份额：修正变化百分比颜色（提升=红，下降=绿）
+    # 第 3 页（idx=2）市场份额：修正变化百分比颜色（提升=红，下降=绿）+ 数据标签统一3位小数
     if slide_index == 2:
         _fix_change_pct_colors(target_slide)
+        _fix_page3_numfmt(target_slide)
 
     # 第 4 页（idx=3）台组排名：CCTV-17 刷绿 + 橘色阈值线定位
     if slide_index == 3:
@@ -1451,6 +1809,15 @@ def generate_report_config_driven(excel_path, template_path, output_path):
         data.report_date_short = f'{month}月{day}日'
         data.report_date = f'{year}年{month}月{day}日'
     _fix_titles(target, data)
+
+    # 修复分分钟页覆盖表格（第 9/10 页）
+    n = len(target.slides)
+    if n > 8:
+        print('  - 修复第 9 页分分钟收视率覆盖表格')
+        _fix_minute_chart_page(target.slides[8], data, metric='rating')
+    if n > 9:
+        print('  - 修复第 10 页分分钟市场份额覆盖表格')
+        _fix_minute_chart_page(target.slides[9], data, metric='share')
 
     print(f'[5/5] 保存: {output_path}')
     target.save(output_path)
