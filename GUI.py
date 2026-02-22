@@ -36,10 +36,45 @@ _DEFAULT_INPUT_DIR = _BASE_DIR / 'input_data'
 # ═══════════════════════════════════════════
 
 def _load_config() -> dict:
+    """
+    读取配置文件，并在启动时自动校验路径是否仍有效。
+    若某项路径失效（换电脑/换用户），自动用本机默认值替换并回写。
+    """
     try:
-        return json.loads(_CONFIG_FILE.read_text('utf-8'))
+        cfg = json.loads(_CONFIG_FILE.read_text('utf-8'))
     except Exception:
-        return {}
+        cfg = {}
+
+    changed = False
+
+    # ── 模板路径：失效则重新检测 ──
+    tpl = cfg.get('template', '')
+    if not tpl or not Path(tpl).is_file():
+        new_tpl = _find_demo_template()
+        if new_tpl:
+            cfg['template'] = new_tpl
+            changed = True
+        elif 'template' in cfg:
+            del cfg['template']
+            changed = True
+
+    # ── 输入目录：失效则用 exe 旁的 input_data/，再不行就用 exe 目录 ──
+    in_dir = cfg.get('input_dir', '')
+    if not in_dir or not Path(in_dir).is_dir():
+        fallback = _DEFAULT_INPUT_DIR if _DEFAULT_INPUT_DIR.exists() else _BASE_DIR
+        cfg['input_dir'] = str(fallback)
+        changed = True
+
+    # ── 输出目录：失效则用 exe 目录 ──
+    out_dir = cfg.get('output_dir', '')
+    if not out_dir or not Path(out_dir).is_dir():
+        cfg['output_dir'] = str(_BASE_DIR)
+        changed = True
+
+    if changed:
+        _save_config(cfg)
+
+    return cfg
 
 
 def _save_config(cfg: dict):

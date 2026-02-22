@@ -28,8 +28,7 @@ a = Analysis(
     datas=_datas + [
         # 运行时需要的 json 配置
         (os.path.join(_ROOT, 'demo_layout_config.json'), '.'),
-        # demo 模板 pptx — 打包进去供首次运行时自动检测
-        (os.path.join(_ROOT, 'output_ppt', 'CCTV-17频道收视日报 0210 demo（简版）.pptx'), 'output_ppt'),
+        # demo 模板 pptx 已作为外部文件放在 exe 同级目录，不再内嵌
     ],
     hiddenimports=_hiddenimports + [
         # 本地模块
