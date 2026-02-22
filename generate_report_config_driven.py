@@ -1098,6 +1098,19 @@ def _fix_org_ranking_page(slide, threshold_color='ED7D31',
     n_rows = len(tbl.rows)
     n_cols = len(tbl.columns)
 
+    # ── 0-pre. 清除 demo 模板遗留的红色单元格边框（FF0000）──
+    for r in range(n_rows):
+        for c in range(n_cols):
+            tc = tbl.cell(r, c)._tc
+            for tcBdr in tc.findall(f'.//{{{A_NS}}}tcBdr'):
+                for ln_elem in list(tcBdr):
+                    # 若该线条包含 FF0000 的 solidFill，整个线条元素移除
+                    for sf in ln_elem.findall(f'.//{{{A_NS}}}solidFill'):
+                        clr = sf.find(f'{{{A_NS}}}srgbClr')
+                        if clr is not None and clr.get('val', '').upper() == 'FF0000':
+                            tcBdr.remove(ln_elem)
+                            break
+
     # ── 查找含 CCTV-17 的行 和 阈值跨越行 ──
     cctv17_all_rows = set()     # 任意列含 CCTV-17 的行
     threshold_row = -1          # 右侧排名中第一个 < 阈值的行
