@@ -1112,15 +1112,22 @@ def _fix_org_ranking_page(slide, threshold_color='ED7D31',
                             tcBdr.remove(ln_elem)
                             break
 
-    # ── 查找含 CCTV-17 的行 和 阈值跨越行 ──
-    cctv17_all_rows = set()     # 任意列含 CCTV-17 的行
+    # ── 查找含 CCTV-17 的半区行 和 阈值跨越行 ──
+    cctv17_left_rows = set()    # 左半区（0-2列）含 CCTV-17 的行
+    cctv17_right_rows = set()   # 右半区（3-5列）含 CCTV-17 的行
     threshold_row = -1          # 右侧排名中第一个 < 阈值的行
 
     for r in range(2, n_rows):  # 跳过日期 + 列头
-        for c in range(n_cols):
+        for c in range(0, min(3, n_cols)):
             cell_text = tbl.cell(r, c).text
             if '农业农村' in cell_text or 'CCTV-17' in cell_text:
-                cctv17_all_rows.add(r)
+                cctv17_left_rows.add(r)
+                break
+        for c in range(3, min(6, n_cols)):
+            cell_text = tbl.cell(r, c).text
+            if '农业农村' in cell_text or 'CCTV-17' in cell_text:
+                cctv17_right_rows.add(r)
+                break
         # 右侧份额列（col 5）：找第一个 < 阈值的行
         if threshold_row < 0:
             try:
@@ -1135,9 +1142,12 @@ def _fix_org_ranking_page(slide, threshold_color='ED7D31',
         for c in range(n_cols):
             _set_cell_font_color(tbl.cell(r, c), '000000', bold=False)
 
-    # ── 1. CCTV-17 行：红色 + 加粗 ──
-    for r in cctv17_all_rows:
-        for c in range(n_cols):
+    # ── 1. CCTV-17 所在半区：红色 + 加粗（避免对侧误染）──
+    for r in cctv17_left_rows:
+        for c in range(0, min(3, n_cols)):
+            _set_cell_font_color(tbl.cell(r, c), HIGHLIGHT_COLOR, bold=True)
+    for r in cctv17_right_rows:
+        for c in range(3, min(6, n_cols)):
             _set_cell_font_color(tbl.cell(r, c), HIGHLIGHT_COLOR, bold=True)
 
     # ── 2. 重新定位橘色阈值线和标签 ──
@@ -1891,11 +1901,83 @@ def _sync_slide(target_slide, src_slide, slide_index, total_slides):
     if slide_index == 7:
         _fix_chart_max_annotation(target_slide, annotation_name='文本框 2', num_format=':.3f')
 
-    # 第 11/12 页（idx=10,11）栏目首播收视率/市场份额：修正当日系列颜色
+    # 第 11/12 页（idx=10,11）栏目首播收视率/市场份额：自适应坐标轴 + 修正当日系列颜色
     if slide_index == 10:
+        _fix_premiere_chart_axis(target_slide)
         _fix_premiere_chart_colors(target_slide, color='FE9B1C')  # 收视率=橙色
     if slide_index == 11:
+        _fix_premiere_chart_axis(target_slide)
         _fix_premiere_chart_colors(target_slide, color='4A7C31')  # 市场份额=绿色
+
+
+def _fix_premiere_chart_axis(target_slide):
+    """
+    自适应调整栏目首播页图表的 Y 轴最大值。
+
+    demo 模板有固定 Y 轴上限（收视率=0.2，份额=1.0），replace_data 后
+    若新数据超过固定值，柱子会被截断。此函数检测实际数据最大值，
+    若超出当前轴上限则用 _compute_nice_axis 重新计算并更新。
+    """
+    C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
+
+    for shp in target_slide.shapes:
+        if not getattr(shp, 'has_chart', False):
+            continue
+        cs = shp.chart._chartSpace
+        pa = cs.find(f'.//{{{C_NS}}}plotArea')
+        if pa is None:
+            continue
+
+        bar_chart = pa.find(f'{{{C_NS}}}barChart')
+        if bar_chart is None:
+            continue
+
+        # 收集所有系列的数据最大值
+        data_max = 0.0
+        for ser in bar_chart.findall(f'{{{C_NS}}}ser'):
+            val_elem = ser.find(f'{{{C_NS}}}val')
+            if val_elem is None:
+                continue
+            num_ref = val_elem.find(f'{{{C_NS}}}numRef')
+            if num_ref is None:
+                continue
+            nc = num_ref.find(f'{{{C_NS}}}numCache')
+            if nc is None:
+                continue
+            for pt in nc.findall(f'{{{C_NS}}}pt'):
+                v = pt.find(f'{{{C_NS}}}v')
+                if v is not None and v.text:
+                    try:
+                        data_max = max(data_max, float(v.text))
+                    except ValueError:
+                        pass
+
+        if data_max <= 0:
+            continue
+
+        # 找到 barChart 绑定的值轴
+        bar_ax_ids = [ax.get('val') for ax in bar_chart.findall(f'{{{C_NS}}}axId')]
+        for vax in pa.findall(f'{{{C_NS}}}valAx'):
+            ax_id = vax.find(f'{{{C_NS}}}axId')
+            if ax_id is None or ax_id.get('val') not in bar_ax_ids:
+                continue
+            scl = vax.find(f'{{{C_NS}}}scaling')
+            if scl is None:
+                continue
+            mx = scl.find(f'{{{C_NS}}}max')
+            current_max = float(mx.get('val')) if mx is not None else None
+
+            # 数据超出当前轴上限 → 重新计算
+            if current_max is not None and data_max > current_max:
+                new_max = _compute_nice_axis(data_max)
+                if mx is None:
+                    mx = etree.SubElement(scl, f'{{{C_NS}}}max')
+                mx.set('val', str(new_max))
+            elif current_max is not None and data_max < current_max * 0.5:
+                # 数据远小于当前上限 → 也调低避免留白过大
+                new_max = _compute_nice_axis(data_max)
+                mx.set('val', str(new_max))
+            break
 
 
 def _fix_premiere_chart_colors(target_slide, color='FE9B1C'):
