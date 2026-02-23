@@ -704,11 +704,14 @@ def _read_premiere_programs(ws, data: ReportData):
 def _find_premiere_col(header_row):
     """在串单表头中查找"首播"标注列。
 
-    扫描表头行，找到包含"首播"文字的列索引。
+    扫描表头行，找到包含"首播"或"首重播"文字的列索引。
     返回列索引(int)或 None（未找到）。
     """
     for i, v in enumerate(header_row):
-        if v is not None and '首播' in _safe_str(v):
+        if v is None:
+            continue
+        txt = _safe_str(v)
+        if '首播' in txt or '首重播' in txt:
             return i
     return None
 
