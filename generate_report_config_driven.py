@@ -1232,10 +1232,21 @@ def _set_cell_font_color(cell, color_hex, bold=None):
         if bold is not None:
             rpr.set('b', '1' if bold else '0')
 
-    # defRPr：移除冲突颜色
+    # defRPr（顶层）：移除冲突颜色
     for defrpr in tc.findall(f'.//{{{A_NS}}}defRPr'):
         for old in defrpr.findall(f'{{{A_NS}}}solidFill'):
             defrpr.remove(old)
+        if bold is not None:
+            defrpr.set('b', '1' if bold else '0')
+
+    # pPr/defRPr（段落级默认运行属性）：清除残留颜色/加粗
+    for ppr in tc.findall(f'.//{{{A_NS}}}pPr'):
+        ppr_defrpr = ppr.find(f'{{{A_NS}}}defRPr')
+        if ppr_defrpr is not None:
+            for old in ppr_defrpr.findall(f'{{{A_NS}}}solidFill'):
+                ppr_defrpr.remove(old)
+            if bold is not None:
+                ppr_defrpr.set('b', '1' if bold else '0')
 
     # endParaRPr
     for eprpr in tc.findall(f'.//{{{A_NS}}}endParaRPr'):
