@@ -1462,8 +1462,9 @@ def _auto_fit_catax_font(chart_shape):
         if max_label_len <= 0:
             return
 
-        # 基准: 8 字符 → 1400 (14pt)，按比例缩小，下限 650 (6.5pt)
-        BASE_CHARS = 8
+        # 基准: demo 模板最长标签约 16 字符，字号 1400 (14pt)。
+        # 仅当实际标签更长时才按比例缩小，下限 650 (6.5pt)。
+        BASE_CHARS = 16
         BASE_SZ = 1400
         MIN_SZ = 650
         if max_label_len <= BASE_CHARS:
