@@ -783,10 +783,10 @@ def build_schedule_chart(prs, data: ReportData, page_num=4):
     if not programs:
         return slide
 
-    # 过滤出有效节目（时长>5分钟，时间在06:00-24:00之间）
+    # 过滤出有效节目（时长>=10分钟，时间在06:00-24:00之间）
     valid_progs = []
     for p in programs:
-        if p.duration <= 5:
+        if p.duration < 10:
             continue
         # 过滤凌晨节目（0-5点）
         try:
@@ -856,10 +856,10 @@ def build_program_ranking(prs, data: ReportData, metric='rating', page_num=5):
     if not programs:
         return slide
 
-    # 过滤有效节目 (时长>5min, 6:00-24:00开播)
+    # 过滤有效节目 (时长>=10min, 6:00-24:00开播)
     valid = []
     for p in programs:
-        if p.duration <= 5:
+        if p.duration < 10:
             continue
         try:
             st = p.start_time.strip()
@@ -996,7 +996,7 @@ def _add_program_labels(slide, data, left, top, width, height):
     _HIDDEN_NAMES = {'国歌', '歌曲', '再见'}
     valid = []
     for p in programs:
-        if p.duration < 5:
+        if p.duration < 10:
             continue
         if p.name.strip() in _HIDDEN_NAMES:
             continue

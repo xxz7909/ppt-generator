@@ -1068,8 +1068,9 @@ def _fix_org_ranking_page(slide, threshold_color='ED7D31',
     """
     修正台组内排名页（第 4 页，slide_index=3）：
 
-    1. CCTV-17（农业农村）行设置绿色字体（5B7F5B）
-    2. 橘色阈值线（直接连接符 10）定位到右侧排名中市场份额
+    1. CCTV-17（农业农村）行设置红色字体（FF0000）+ 加粗
+    2. 其余数据行恢复为黑色（000000）
+    3. 橘色阈值线（直接连接符 10）定位到右侧排名中市场份额
        跨越阈值的行边界，标签（文本框 10）恢复阈值文本
 
     :param slide: 目标幻灯片
@@ -1077,7 +1078,7 @@ def _fix_org_ranking_page(slide, threshold_color='ED7D31',
     :param threshold_text: 阈值标签文本，如 '0.83%'
     :param threshold_value: 阈值数值，如 0.83
     """
-    GREEN_FONT = '5B7F5B'
+    HIGHLIGHT_COLOR = 'FF0000'
 
     table_shape = None
     connector = None
@@ -1129,67 +1130,15 @@ def _fix_org_ranking_page(slide, threshold_color='ED7D31',
             except (ValueError, TypeError):
                 pass
 
-    # ── 0. 清除非 CCTV-17 数据行的残留绿色/加粗（demo 模板中旧位置） ──
+    # ── 0. 所有数据行恢复为黑色、非粗体（清除 demo 模板残留样式）──
     for r in range(2, n_rows):
-        if r in cctv17_all_rows:
-            continue
         for c in range(n_cols):
-            tc = tbl.cell(r, c)._tc
-            for run in tc.findall(f'.//{{{A_NS}}}r'):
-                rpr = run.find(f'{{{A_NS}}}rPr')
-                if rpr is None:
-                    continue
-                # 移除绿色 solidFill
-                for sf in rpr.findall(f'{{{A_NS}}}solidFill'):
-                    clr = sf.find(f'{{{A_NS}}}srgbClr')
-                    if clr is not None and clr.get('val') == GREEN_FONT:
-                        rpr.remove(sf)
-                # 移除加粗（恢复为非粗体）
-                if rpr.get('b') == '1':
-                    rpr.attrib.pop('b', None)
-            for eprpr in tc.findall(f'.//{{{A_NS}}}endParaRPr'):
-                for sf in eprpr.findall(f'{{{A_NS}}}solidFill'):
-                    clr = sf.find(f'{{{A_NS}}}srgbClr')
-                    if clr is not None and clr.get('val') == GREEN_FONT:
-                        eprpr.remove(sf)
-                if eprpr.get('b') == '1':
-                    eprpr.attrib.pop('b', None)
+            _set_cell_font_color(tbl.cell(r, c), '000000', bold=False)
 
-    # ── 1. 绿色字体 ──
+    # ── 1. CCTV-17 行：红色 + 加粗 ──
     for r in cctv17_all_rows:
         for c in range(n_cols):
-            tc = tbl.cell(r, c)._tc
-            # 处理所有 <a:r> 的 rPr：设置绿色 + 加粗
-            for run in tc.findall(f'.//{{{A_NS}}}r'):
-                rpr = run.find(f'{{{A_NS}}}rPr')
-                if rpr is None:
-                    rpr = etree.SubElement(run, f'{{{A_NS}}}rPr')
-                    t_elem = run.find(f'{{{A_NS}}}t')
-                    if t_elem is not None:
-                        run.remove(rpr)
-                        run.insert(list(run).index(t_elem), rpr)
-                # 移除旧 solidFill，添加绿色
-                for old in rpr.findall(f'{{{A_NS}}}solidFill'):
-                    rpr.remove(old)
-                fill = etree.SubElement(rpr, f'{{{A_NS}}}solidFill')
-                clr = etree.SubElement(fill, f'{{{A_NS}}}srgbClr')
-                clr.set('val', GREEN_FONT)
-                # 加粗
-                rpr.set('b', '1')
-
-            # 处理 defRPr：移除冲突颜色
-            for defrpr in tc.findall(f'.//{{{A_NS}}}defRPr'):
-                for old in defrpr.findall(f'{{{A_NS}}}solidFill'):
-                    defrpr.remove(old)
-
-            # 处理 endParaRPr：设置绿色 + 加粗
-            for eprpr in tc.findall(f'.//{{{A_NS}}}endParaRPr'):
-                for old in eprpr.findall(f'{{{A_NS}}}solidFill'):
-                    eprpr.remove(old)
-                fill = etree.SubElement(eprpr, f'{{{A_NS}}}solidFill')
-                clr = etree.SubElement(fill, f'{{{A_NS}}}srgbClr')
-                clr.set('val', GREEN_FONT)
-                eprpr.set('b', '1')
+            _set_cell_font_color(tbl.cell(r, c), HIGHLIGHT_COLOR, bold=True)
 
     # ── 2. 重新定位橘色阈值线和标签 ──
     if threshold_row < 0 or not connector:
@@ -1256,12 +1205,12 @@ def _fix_channel_ranking_page(slide):
                 elif arrow_text == '↓':
                     _set_cell_font_color(tbl.cell(r, 6), '000000')
 
-            # ── CCTV-17 行：清除继承自 demo 的红色，恢复为黑色 ──
+            # ── CCTV-17 行：全行红色 + 加粗（包括箭头列） ──
             is_cctv17 = any('农业农村' in tbl.cell(r, c).text or 'CCTV-17' in tbl.cell(r, c).text
                             for c in range(n_cols))
             if is_cctv17:
-                for c in range(min(6, n_cols)):  # col 0-5，箭头列已单独处理
-                    _set_cell_font_color(tbl.cell(r, c), '000000')
+                for c in range(n_cols):
+                    _set_cell_font_color(tbl.cell(r, c), RED, bold=True)
 
 
 def _set_cell_font_color(cell, color_hex, bold=None):
@@ -1576,7 +1525,7 @@ def _group_programs(programs, max_cols=20):
 
     valid = []
     for p in programs:
-        if p.duration < 1:
+        if p.duration < 10:
             continue
         if p.name.strip() in _HIDDEN_NAMES:
             continue
@@ -1931,18 +1880,20 @@ def _sync_slide(target_slide, src_slide, slide_index, total_slides):
     if slide_index == 7:
         _fix_chart_max_annotation(target_slide, annotation_name='文本框 2', num_format=':.3f')
 
-    # 第 11/12 页（idx=10,11）栏目首播收视率/市场份额：修正当日系列颜色为橙色
-    if slide_index in (10, 11):
-        _fix_premiere_chart_colors(target_slide)
+    # 第 11/12 页（idx=10,11）栏目首播收视率/市场份额：修正当日系列颜色
+    if slide_index == 10:
+        _fix_premiere_chart_colors(target_slide, color='FE9B1C')  # 收视率=橙色
+    if slide_index == 11:
+        _fix_premiere_chart_colors(target_slide, color='4A7C31')  # 市场份额=绿色
 
 
-def _fix_premiere_chart_colors(target_slide):
+def _fix_premiere_chart_colors(target_slide, color='FE9B1C'):
     """
     修正栏目首播页图表的系列颜色。
 
     问题：demo 模板有 3 个系列(前1个月均值/前一日/当日)，当只有 2 个系列时
     （无月均数据），replace_data 后 series[1](当日) 继承了 demo 的 series[1]
-    的浅灰色，应改为橙色(FE9B1C)以匹配 demo 的当日系列。
+    的浅灰色，应改为指定颜色以匹配 demo 的当日系列。
     """
     C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
     A_NS = 'http://schemas.openxmlformats.org/drawingml/2006/main'
@@ -1955,7 +1906,7 @@ def _fix_premiere_chart_colors(target_slide):
         if n_series < 2:
             continue
 
-        # 修正最后一个系列（当日数据）为橙色 FE9B1C
+        # 修正最后一个系列（当日数据）为指定颜色
         last_ser = list(chart.series)[-1]._element
         sp = last_ser.find(f'{{{C_NS}}}spPr')
         if sp is None:
@@ -1963,10 +1914,10 @@ def _fix_premiere_chart_colors(target_slide):
         # 清除旧 solidFill
         for old_fill in sp.findall(f'{{{A_NS}}}solidFill'):
             sp.remove(old_fill)
-        # 添加橙色 solidFill
+        # 添加指定颜色 solidFill
         solid = etree.SubElement(sp, f'{{{A_NS}}}solidFill')
         srgb = etree.SubElement(solid, f'{{{A_NS}}}srgbClr')
-        srgb.set('val', 'FE9B1C')
+        srgb.set('val', color)
         # 将 solidFill 放到 spPr 的第一个子元素位置
         sp.insert(0, solid)
 
