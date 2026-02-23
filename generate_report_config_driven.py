@@ -1467,6 +1467,54 @@ def _fix_chart_max_annotation(target_slide, annotation_name=None, num_format=':.
                     para.text = text
 
 
+def _auto_fit_catax_font(chart_shape):
+    """根据最长分类标签自适应调整 catAx 字号。
+
+    demo 原始: 14pt (sz=1400) 对应约 8 字符短标签。
+    当标签更长时，按比例缩小字号，最小 650 (6.5pt)。
+    """
+    C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
+    A_NS = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+    try:
+        cs = chart_shape.chart._chartSpace
+        pa = cs.find(f'.//{{{C_NS}}}plotArea')
+        if pa is None:
+            return
+
+        # 计算最长分类标签长度
+        max_label_len = 0
+        for str_cache in pa.findall(f'.//{{{C_NS}}}strCache'):
+            for pt in str_cache.findall(f'{{{C_NS}}}pt'):
+                v = pt.find(f'{{{C_NS}}}v')
+                if v is not None and v.text:
+                    max_label_len = max(max_label_len, len(v.text))
+
+        if max_label_len <= 0:
+            return
+
+        # 基准: 8 字符 → 1400 (14pt)，按比例缩小，下限 650 (6.5pt)
+        BASE_CHARS = 8
+        BASE_SZ = 1400
+        MIN_SZ = 650
+        if max_label_len <= BASE_CHARS:
+            new_sz = BASE_SZ
+        else:
+            new_sz = max(MIN_SZ, int(BASE_SZ * BASE_CHARS / max_label_len))
+
+        # 应用到所有可见 catAx
+        for cat_ax in pa.findall(f'{{{C_NS}}}catAx'):
+            delete_el = cat_ax.find(f'{{{C_NS}}}delete')
+            if delete_el is not None and delete_el.get('val') == '1':
+                continue  # 跳过隐藏轴
+            txPr = cat_ax.find(f'{{{C_NS}}}txPr')
+            if txPr is None:
+                continue
+            for defRPr in txPr.findall(f'.//{{{A_NS}}}defRPr'):
+                defRPr.set('sz', str(new_sz))
+    except (AttributeError, TypeError):
+        pass
+
+
 def _fix_schedule_chart_page(target_slide, src_slide):
     """
     修正串单市场份额页（第 6 页，slide_index=5）：
@@ -1489,6 +1537,8 @@ def _fix_schedule_chart_page(target_slide, src_slide):
 
     if target_chart_shape and src_chart_shape:
         _sync_combo_chart(target_chart_shape, src_chart_shape)
+        # ── 1b. 根据最长分类标签自适应 catAx 字号 ──
+        _auto_fit_catax_font(target_chart_shape)
 
     # ── 2. 超轴最大值标注 ──
     _fix_chart_max_annotation(target_slide, annotation_name='文本框 23', num_format=':.3f')

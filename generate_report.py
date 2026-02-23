@@ -812,7 +812,7 @@ def build_schedule_chart(prs, data: ReportData, page_num=4):
     share_vals = []
     rating_vals = []
     for p in valid_progs:
-        label = p.name[:8] if len(p.name) > 8 else p.name
+        label = p.name
         st = _format_start_time(p.start_time)
         categories.append(f'{label}{st}')
         share_vals.append(p.market_share)

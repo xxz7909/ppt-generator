@@ -701,8 +701,25 @@ def _read_premiere_programs(ws, data: ReportData):
         data.premiere_programs.append(item)
 
 
+def _find_premiere_col(header_row):
+    """在串单表头中查找"首播"标注列。
+
+    扫描表头行，找到包含"首播"文字的列索引。
+    返回列索引(int)或 None（未找到）。
+    """
+    for i, v in enumerate(header_row):
+        if v is not None and '首播' in _safe_str(v):
+            return i
+    return None
+
+
 def _read_premiere_from_schedule(ws, data: ReportData):
-    """从串单sheet读取首播节目数据（16:30-24:00 非电视剧）
+    """从串单sheet读取首播节目数据。
+
+    筛选策略:
+      - 优先: 若串单最后几列中有"首播"标注列（表头含"首播"），
+        则只选取该列标记了"首播"的行（用户手动标注）。
+      - 兜底: 若无"首播"标注列，使用自动筛选（16:30-24:00 非电视剧）。
 
     列映射:
       A(0)=名称, F(5)=开始时间, H(7)=结束时间,
@@ -715,13 +732,44 @@ def _read_premiere_from_schedule(ws, data: ReportData):
         return
 
     import datetime as _dt
+
+    # 检测是否有"首播"标注列
+    premiere_col = _find_premiere_col(rows[0])
+    use_manual_filter = premiere_col is not None
+    if use_manual_filter:
+        print(f'  串单: 检测到"首播"标注列(第{premiere_col+1}列)，按标注筛选首播节目')
+
     cutoff_start = _dt.time(16, 30, 0)
 
     premiere_list = []
     for r in rows[1:]:
         if r[0] is None:
             continue
-        # 解析开始时间
+
+        # ── 筛选逻辑 ──
+        if use_manual_filter:
+            # 手动标注模式: 只取标注了"首播"的行
+            mark = _safe_str(r[premiere_col]) if len(r) > premiere_col else ''
+            if '首播' not in mark:
+                continue
+        else:
+            # 自动筛选模式: 16:30起 + 排除电视剧
+            raw_start = r[5]
+            if raw_start is None:
+                continue
+            if isinstance(raw_start, _dt.datetime):
+                start_t = raw_start.time()
+            elif isinstance(raw_start, _dt.time):
+                start_t = raw_start
+            else:
+                continue
+            if start_t < cutoff_start:
+                continue
+            cat = _safe_str(r[9]) if len(r) > 9 else ''
+            if '电视剧' in cat:
+                continue
+
+        # ── 解析开始/结束时间 ──
         raw_start = r[5]
         if raw_start is None:
             continue
@@ -731,15 +779,8 @@ def _read_premiere_from_schedule(ws, data: ReportData):
             start_t = raw_start
         else:
             continue
-        # 筛选 16:30 起
-        if start_t < cutoff_start:
-            continue
-        # 排除电视剧
-        cat = _safe_str(r[9]) if len(r) > 9 else ''
-        if '电视剧' in cat:
-            continue
+        start_str = start_t.strftime('%H:%M')
 
-        # 解析结束时间
         raw_end = r[7] if len(r) > 7 else None
         if isinstance(raw_end, _dt.datetime):
             end_str = raw_end.strftime('%H:%M')
@@ -747,8 +788,6 @@ def _read_premiere_from_schedule(ws, data: ReportData):
             end_str = raw_end.strftime('%H:%M')
         else:
             end_str = _time_to_str(raw_end)
-
-        start_str = start_t.strftime('%H:%M')
 
         item = PremiereProgram()
         item.name = _safe_str(r[0])
@@ -771,6 +810,8 @@ def _read_premiere_from_schedule(ws, data: ReportData):
     # 用串单数据替换旧的 premiere_programs
     if premiere_list:
         data.premiere_programs = premiere_list
+        if use_manual_filter:
+            print(f'  串单: 共筛选出 {len(premiere_list)} 个首播节目')
 
 
 def _read_premiere_audience(ws, data: ReportData):
