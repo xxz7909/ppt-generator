@@ -57,39 +57,49 @@
 | `ppt_generator.spec` | **PyInstaller 打包配置**。定义 exe 入口为 `GUI.py`，收集所有依赖包（openpyxl / pandas / pptx / lxml 等），打包后名称为 `CCTV17收视日报生成器.exe` |
 | `requirements.txt` | **Python 依赖清单**。列出所有需要 `pip install` 的第三方包 |
 
-### 辅助调试脚本（`_` 前缀文件）
-
-这些脚本是开发过程中的临时验证工具，不参与正式生成流程：
+### 文档（`docs/`）
 
 | 文件 | 说明 |
 |---|---|
-| `_check_p6_font.py` | 检验第 6 页字体格式 |
-| `_check_p9.py` / `_check_p9_v2.py` | 验证第 9 页分分钟数据 |
-| `_check_p11_p12_axis.py` | 检验第 11/12 页坐标轴范围 |
-| `_check_p13_colors.py` | 检验第 13 页颜色 |
-| `_check_premiere.py` / `_check_premiere2.py` / `_check_draft_premiere.py` | 检验首播数据页 |
-| `_check_fills.py` / `_check_fmt.py` / `_check_groups.py` | 检验填充/格式/分组 |
-| `_analyze_p13d.py` | 分析第 13 页数据结构 |
-| `_test_overflow.py` | 测试文本溢出处理 |
+| `README.md` | 本文件（项目根目录） |
+| `docs/模板文件定制指南.md` | 详细说明哪些样式可通过修改模板定制，哪些由代码强制覆盖 |
+| `docs/spec.md` | 各页 PPT 的详细设计规范（字体/尺寸/数据计算口径） |
+| `docs/body代码解释文档.md` | 早期原型代码说明（已弃用，仅供参考） |
+| `docs/ppt-old代码逻辑解析文档.md` | 历史版本代码说明（已弃用，仅供参考） |
 
-### 文档
+### 辅助调试脚本（`scripts/`）
+
+这些脚本是开发过程中的临时验证工具，不参与正式生成流程，已统一归入 `scripts/` 目录：
 
 | 文件 | 说明 |
 |---|---|
-| `README.md` | 本文件 |
-| `模板文件定制指南.md` | 详细说明哪些样式可通过修改模板定制，哪些由代码强制覆盖 |
-| `spec.md` | 各页 PPT 的详细设计规范（字体/尺寸/数据计算口径） |
-| `需求分析.md` | 原始需求文档 |
-| `TODO.md` | 待完成事项 |
-| `body.py` / `body代码解释文档.md` | 早期原型代码及说明（已弃用） |
-| `ppt-old.py` / `ppt-old-1.py` / `ppt-old代码逻辑解析文档.md` | 历史版本及说明（已弃用） |
+| `scripts/_check_p6_font.py` | 检验第 6 页字体格式 |
+| `scripts/_check_p9.py` / `_check_p9_v2.py` | 验证第 9 页分分钟数据 |
+| `scripts/_check_p11_p12_axis.py` | 检验第 11/12 页坐标轴范围 |
+| `scripts/_check_p13_colors.py` | 检验第 13 页颜色 |
+| `scripts/_check_premiere.py` / `_check_premiere2.py` / `_check_draft_premiere.py` | 检验首播数据页 |
+| `scripts/_check_fills.py` / `_check_fmt.py` / `_check_groups.py` | 检验填充/格式/分组 |
+| `scripts/_analyze_p13d.py` | 分析第 13 页数据结构 |
+| `scripts/_test_overflow.py` | 测试文本溢出处理 |
 
-### 目录
+### 归档代码（`archive/`）
+
+| 文件 | 说明 |
+|---|---|
+| `archive/body.py` | 早期原型主逻辑代码（已弃用） |
+| `archive/ppt-old.py` | v1 版本生成器（已弃用） |
+| `archive/ppt-old-1.py` | v1 变体版本（已弃用） |
+
+### 目录结构
 
 | 目录 | 说明 |
 |---|---|
+| `docs/` | 项目文档（spec、模板定制指南、历史代码说明） |
+| `scripts/` | 辅助调试/验证脚本 |
+| `archive/` | 已弃用的历史代码 |
 | `input_data/` | 放置输入 Excel 文件 |
 | `output_ppt/` | 生成的 PPT 和 demo 模板文件存放目录 |
+| `dist/` | PyInstaller 最终输出（exe 文件） |
 | `build/` | PyInstaller 构建中间产物（可忽略） |
 | `__pycache__/` | Python 字节码缓存（可忽略） |
 
@@ -348,7 +358,7 @@ pyinstaller ppt_generator.spec
 
 ## 模板文件定制
 
-详见 [模板文件定制指南.md](模板文件定制指南.md)。
+详见 [docs/模板文件定制指南.md](docs/模板文件定制指南.md)。
 
 简要原则：
 - **改模板直接生效**：字体、颜色、字号、位置、图表样式、背景、装饰图形、最后一页所有内容
