@@ -268,7 +268,7 @@ def build_summary(prs, data: ReportData):
         f'{date_s}，频道市场份额为{ms.cctv17_current_share:.3f}%，较前一个月均值{share_change_str}；'
         f'收视率{ms.cctv17_current_rating:.3f}%，{rating_change_str}；'
         f'上星频道排名第{data.channel_rank}位，较前一日{ch_change_str}，'
-        f'央视台组内排名第{data.org_rank}位，与前一日{org_change_str}。'
+        f'央视台组内排名第{data.org_rank}位，较前一日{org_change_str}。'
     )
 
     drama_share_chg = 0
@@ -1577,7 +1577,7 @@ def _change_desc(pct, up_word='提升', down_word='下降', flat_word='基本持
 def _rank_change_desc(change):
     """排名变化描述"""
     if change > 0:
-        return f'上升{change}位'
+        return f'提升{change}位'
     elif change < 0:
         return f'下滑{abs(change)}位'
     else:

@@ -515,7 +515,7 @@ def _change_desc(pct, up_word='提升', down_word='下降', flat_word='基本持
 
 def _rank_change_desc(change):
     if change > 0:
-        return f'上升{change}位'
+        return f'提升{change}位'
     elif change < 0:
         return f'下滑{abs(change)}位'
     return '保持不变'
@@ -1746,8 +1746,29 @@ def _fix_minute_chart_page(target_slide, data, metric='rating'):
 
     chart_duration = chart_end_min - chart_start_min
 
-    # 表头/分隔线表格：保留模板原始位置和列宽，不做重新定位
-    # （模板已手动调好对齐，重新计算会导致列太窄、文字换行）
+    # ── 表头/分隔线表格：按时段严格对齐图表横坐标 ──
+    if plot_left is not None and chart_duration > 0:
+        # 所有固定时段的起止时间（分钟数）
+        all_slot_start = _FIXED_TIME_SLOTS[0][1]   # 06:00 = 360
+        all_slot_end   = _FIXED_TIME_SLOTS[-1][2]  # 25:00 = 1500
+        # 表格左侧偏移 = 时段起始相对于图表起始的比例
+        tbl_left_offset = int((all_slot_start - chart_start_min) / chart_duration * plot_width)
+        # 表格总宽度 = 所有时段的总时长占图表总时长的比例
+        tbl_total_w = int((all_slot_end - all_slot_start) / chart_duration * plot_width)
+        tbl_left = plot_left + tbl_left_offset
+
+        slot_durations_for_align = [end - start for _, start, end in _FIXED_TIME_SLOTS]
+        slot_widths = _proportional_widths(slot_durations_for_align, tbl_total_w)
+
+        for tbl_shape in (header_tbl_shape, divider_tbl_shape):
+            if tbl_shape is None:
+                continue
+            tbl_shape.left = tbl_left
+            tbl_shape.width = tbl_total_w
+            tbl_obj = tbl_shape.table
+            n = min(len(tbl_obj.columns), len(slot_widths))
+            for ci in range(n):
+                tbl_obj.columns[ci].width = slot_widths[ci]
 
     # ── 更新节目名称表格 ──
     if prog_tbl_shape and prog_groups:
