@@ -1746,29 +1746,57 @@ def _fix_minute_chart_page(target_slide, data, metric='rating'):
 
     chart_duration = chart_end_min - chart_start_min
 
-    # ── 表头/分隔线表格：按时段严格对齐图表横坐标 ──
+    # ── 表头 + 分隔线表格：按时段边界严格对齐图表横坐标 ──
     if plot_left is not None and chart_duration > 0:
-        # 所有固定时段的起止时间（分钟数）
-        all_slot_start = _FIXED_TIME_SLOTS[0][1]   # 06:00 = 360
-        all_slot_end   = _FIXED_TIME_SLOTS[-1][2]  # 25:00 = 1500
-        # 表格左侧偏移 = 时段起始相对于图表起始的比例
-        tbl_left_offset = int((all_slot_start - chart_start_min) / chart_duration * plot_width)
-        # 表格总宽度 = 所有时段的总时长占图表总时长的比例
-        tbl_total_w = int((all_slot_end - all_slot_start) / chart_duration * plot_width)
-        tbl_left = plot_left + tbl_left_offset
-
-        slot_durations_for_align = [end - start for _, start, end in _FIXED_TIME_SLOTS]
-        slot_widths = _proportional_widths(slot_durations_for_align, tbl_total_w)
+        # 各时段边界在图表坐标系中的 EMU 位置
+        boundaries_min = [s[1] for s in _FIXED_TIME_SLOTS] + [_FIXED_TIME_SLOTS[-1][2]]
+        boundary_pos = [
+            plot_left + int((t - chart_start_min) / chart_duration * plot_width)
+            for t in boundaries_min
+        ]
 
         for tbl_shape in (header_tbl_shape, divider_tbl_shape):
             if tbl_shape is None:
                 continue
-            tbl_shape.left = tbl_left
-            tbl_shape.width = tbl_total_w
+            orig_left = tbl_shape.left
+            orig_width = tbl_shape.width
             tbl_obj = tbl_shape.table
-            n = min(len(tbl_obj.columns), len(slot_widths))
+            n = min(len(tbl_obj.columns), len(_FIXED_TIME_SLOTS))
             for ci in range(n):
-                tbl_obj.columns[ci].width = slot_widths[ci]
+                if ci == 0:
+                    w = boundary_pos[1] - orig_left
+                elif ci == n - 1:
+                    w = (orig_left + orig_width) - boundary_pos[ci]
+                else:
+                    w = boundary_pos[ci + 1] - boundary_pos[ci]
+                tbl_obj.columns[ci].width = max(w, 50000)
+
+        # 表头表格：消除单元格内边距，确保窄列文字不换行
+        if header_tbl_shape is not None:
+            tbl_obj = header_tbl_shape.table
+            n = min(len(tbl_obj.columns), len(_FIXED_TIME_SLOTS))
+            for ci in range(n):
+                tc = tbl_obj.cell(0, ci)._tc
+                tc_body = tc.find(f'.//{{{a_ns}}}txBody')
+                if tc_body is None:
+                    continue
+                bodyPr = tc_body.find(f'{{{a_ns}}}bodyPr')
+                if bodyPr is None:
+                    bodyPr = etree.SubElement(tc_body, f'{{{a_ns}}}bodyPr')
+                    tc_body.insert(0, bodyPr)
+                bodyPr.set('lIns', '0')
+                bodyPr.set('rIns', '0')
+
+    # ── 确保节目表格在分隔线表格之上（z-order）──
+    if prog_tbl_shape and divider_tbl_shape:
+        parent = prog_tbl_shape._element.getparent()
+        prog_elem = prog_tbl_shape._element
+        divider_elem = divider_tbl_shape._element
+        # 在 DOM 中后出现的形状渲染在上层；确保 prog 在 divider 之后
+        prog_siblings = list(parent)
+        if prog_siblings.index(prog_elem) < prog_siblings.index(divider_elem):
+            parent.remove(prog_elem)
+            divider_elem.addnext(prog_elem)
 
     # ── 更新节目名称表格 ──
     if prog_tbl_shape and prog_groups:
