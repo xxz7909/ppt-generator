@@ -1557,8 +1557,8 @@ def _group_programs(programs, max_cols=20):
             continue
         end_m = _parse_time_minutes(p.end_time)
 
-        # 首播/重播判定：下午剧场(13:30)起到晚间节目(22:30)止为首播，其余为重播
-        is_premiere = (13 * 60 + 30 <= start_m < 22 * 60 + 30)
+        # 首播/重播判定：根据串单P列（首重播）实际数据
+        is_premiere = (getattr(p, 'premiere_type', '') == '首播')
         suffix = '（首播）' if is_premiere else '（重播）'
 
         # 不加"电视剧："前缀，只保留节目名

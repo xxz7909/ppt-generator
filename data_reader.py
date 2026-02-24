@@ -90,6 +90,7 @@ class ProgramItem:
     subcategory: str = ""
     market_share: float = 0
     rating: float = 0
+    premiere_type: str = ""  # 首重播列："首播" 或空
 
 
 @dataclass
@@ -615,6 +616,8 @@ def _read_programs(ws, data: ReportData):
         item.subcategory = _safe_str(vals[10])
         item.market_share = _safe_float(vals[11])
         item.rating = _safe_float(vals[12])
+        if len(vals) > 15 and vals[15] is not None:
+            item.premiere_type = _safe_str(vals[15])  # P列：首重播
         data.programs.append(item)
 
 

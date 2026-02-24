@@ -7,7 +7,10 @@
 - [ ] (无)
 
 ## 待办
-
+- [x] 分分钟Page9/10节目标签变色：改为读取串单P列（首重播）实际数据，仅"首播"节目变色
+  - ProgramItem新增premiere_type字段
+  - _read_programs读取P列(col 15)
+  - _group_programs由时间段推断改为按premiere_type=='首播'判定
 - [ ] 打包成GUI-exe并制作友好的交互与记忆功能
 
 ## 已完成
