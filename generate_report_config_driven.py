@@ -421,19 +421,28 @@ def _sync_combo_chart(target_shape, src_shape):
         bar_chart = pa.find(f'{{{C_NS}}}barChart')
         line_chart = pa.find(f'{{{C_NS}}}lineChart')
 
-        def _replace_cache(ser_elem, categories, values, is_num=False):
-            """替换一个 <c:ser> 下的 strCache (cat) 和 numCache (val)"""
+        def _replace_cache(ser_elem, categories, values, ser_col='B'):
+            """替换一个 <c:ser> 下的 strCache (cat) 和 numCache (val)，
+            同时更新公式引用范围以匹配新数据长度。"""
+            n_cat = len(categories)
+            n_val = len(values)
+            bottom_row = n_cat + 1  # 数据从第2行开始
+
             # 替换分类 strCache
             cat_elem = ser_elem.find(f'{{{C_NS}}}cat')
             if cat_elem is not None:
                 str_ref = cat_elem.find(f'{{{C_NS}}}strRef')
                 if str_ref is not None:
+                    # 更新公式引用范围
+                    f_elem = str_ref.find(f'{{{C_NS}}}f')
+                    if f_elem is not None:
+                        f_elem.text = f'Sheet1!$A$2:$A${bottom_row}'
                     old_cache = str_ref.find(f'{{{C_NS}}}strCache')
                     if old_cache is not None:
                         str_ref.remove(old_cache)
                     new_cache = etree.SubElement(str_ref, f'{{{C_NS}}}strCache')
                     pt_count = etree.SubElement(new_cache, f'{{{C_NS}}}ptCount')
-                    pt_count.set('val', str(len(categories)))
+                    pt_count.set('val', str(n_cat))
                     for idx, cat_text in enumerate(categories):
                         pt = etree.SubElement(new_cache, f'{{{C_NS}}}pt')
                         pt.set('idx', str(idx))
@@ -445,6 +454,10 @@ def _sync_combo_chart(target_shape, src_shape):
             if val_elem is not None:
                 num_ref = val_elem.find(f'{{{C_NS}}}numRef')
                 if num_ref is not None:
+                    # 更新公式引用范围
+                    f_elem = num_ref.find(f'{{{C_NS}}}f')
+                    if f_elem is not None:
+                        f_elem.text = f'Sheet1!${ser_col}$2:${ser_col}${bottom_row}'
                     old_cache = num_ref.find(f'{{{C_NS}}}numCache')
                     if old_cache is not None:
                         num_ref.remove(old_cache)
@@ -452,27 +465,90 @@ def _sync_combo_chart(target_shape, src_shape):
                     fmt = etree.SubElement(new_cache, f'{{{C_NS}}}formatCode')
                     fmt.text = '0.000'
                     pt_count = etree.SubElement(new_cache, f'{{{C_NS}}}ptCount')
-                    pt_count.set('val', str(len(values)))
+                    pt_count.set('val', str(n_val))
                     for idx, val in enumerate(values):
                         pt = etree.SubElement(new_cache, f'{{{C_NS}}}pt')
                         pt.set('idx', str(idx))
                         v_elem = etree.SubElement(pt, f'{{{C_NS}}}v')
                         v_elem.text = str(val) if val is not None else '0'
 
-        # 替换 barChart 数据
+        # 替换 barChart 数据（B列）
         if bar_chart is not None:
             bar_ser = bar_chart.find(f'{{{C_NS}}}ser')
             if bar_ser is not None:
-                _replace_cache(bar_ser, src_categories, src_bar_vals)
+                _replace_cache(bar_ser, src_categories, src_bar_vals, ser_col='B')
 
-        # 替换 lineChart 数据
+        # 替换 lineChart 数据（C列）
         if line_chart is not None:
             line_ser = line_chart.find(f'{{{C_NS}}}ser')
             if line_ser is not None:
-                _replace_cache(line_ser, src_categories, src_line_vals)
+                _replace_cache(line_ser, src_categories, src_line_vals, ser_col='C')
+
+        # --- 同步嵌入式 Excel 工作簿 ---
+        # 仅更新 XML cache 不够：点击"编辑数据"时 PowerPoint 会打开嵌入的 xlsx，
+        # 如果 xlsx 仍是 demo 旧数据，关闭后图表会被刷回 demo 值。
+        _update_combo_chart_xlsx(target_shape, src_categories,
+                                src_bar_vals, src_line_vals)
 
     except (AttributeError, TypeError) as e:
         print(f'[WARN] _sync_combo_chart error: {e}')
+
+
+def _update_combo_chart_xlsx(target_shape, categories, bar_vals, line_vals):
+    """更新组合图表的嵌入式 Excel 工作簿，使"编辑数据"显示正确值。
+
+    布局: A列=分类, B列=bar系列(市场份额%), C列=line系列(收视率)
+    """
+    import io
+    try:
+        from xlsxwriter import Workbook as XlsxWorkbook
+    except ImportError:
+        return  # xlsxwriter 不可用则跳过
+
+    try:
+        chart_obj = target_shape.chart
+
+        # 读取系列名称（从 XML cache 或 fallback）
+        C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
+        cs = chart_obj._chartSpace
+        pa = cs.find(f'.//{{{C_NS}}}plotArea')
+        bar_name = '市场份额(%)'
+        line_name = '收视率(%)'
+        for chart_elem_tag in ('barChart', 'lineChart'):
+            chart_elem = pa.find(f'{{{C_NS}}}{chart_elem_tag}')
+            if chart_elem is not None:
+                ser = chart_elem.find(f'{{{C_NS}}}ser')
+                if ser is not None:
+                    tx = ser.find(f'{{{C_NS}}}tx')
+                    if tx is not None:
+                        v_elem = tx.find(f'.//{{{C_NS}}}v')
+                        if v_elem is not None and v_elem.text:
+                            if chart_elem_tag == 'barChart':
+                                bar_name = v_elem.text
+                            else:
+                                line_name = v_elem.text
+
+        # 生成 xlsx blob
+        xlsx_buf = io.BytesIO()
+        wb = XlsxWorkbook(xlsx_buf, {'in_memory': True})
+        ws = wb.add_worksheet()
+        # 写表头
+        ws.write(0, 0, '')           # A1 空
+        ws.write(0, 1, bar_name)     # B1 bar系列名
+        ws.write(0, 2, line_name)    # C1 line系列名
+        # 写数据
+        for i, cat in enumerate(categories):
+            ws.write(i + 1, 0, cat)
+            ws.write(i + 1, 1, bar_vals[i] if i < len(bar_vals) else 0)
+            ws.write(i + 1, 2, line_vals[i] if i < len(line_vals) else 0)
+        wb.close()
+        xlsx_blob = xlsx_buf.getvalue()
+
+        # 更新嵌入式 xlsx part
+        chart_obj._workbook.update_from_xlsx_blob(xlsx_blob)
+
+    except Exception as e:
+        print(f'[WARN] _update_combo_chart_xlsx: {e}')
 
 
 # ═══════════════════════════════════════════════════════════════
