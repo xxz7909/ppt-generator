@@ -1703,8 +1703,9 @@ def generate_report(excel_path, template_path=None, output_path=None):
     print('  - 分分钟市场份额')
     build_minute_chart(prs, data, metric='share', page_num=page)
 
-    # 日报扩展幻灯片
-    if data.has_daily_report:
+    # 扩展幻灯片（按实际数据可用性生成，不再仅依赖日报sheet存在性）
+    _has_extension = data.premiere_programs or data.channel_audience or data.has_daily_report
+    if _has_extension:
         if strict_simple_mode:
             # 简版严格对标：仅保留 demo 结构中的扩展页
             if data.premiere_programs:
@@ -1723,9 +1724,10 @@ def generate_report(excel_path, template_path=None, output_path=None):
         else:
             # 标准版：完整扩展页
             # 11. 电视剧市场份额
-            page += 1
-            print('  - 电视剧分析')
-            build_drama_analysis(prs, data, page_num=page)
+            if data.has_daily_report:
+                page += 1
+                print('  - 电视剧分析')
+                build_drama_analysis(prs, data, page_num=page)
 
             # 12. 首播电视剧观众规模
             if data.drama_audience:

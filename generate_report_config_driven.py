@@ -2211,6 +2211,31 @@ def generate_report_config_driven(excel_path, template_path, output_path):
     target = Presentation(output_path)
     source = Presentation(draft_path)
 
+    # ── 页数对齐：demo 可能有日报扩展页而数据稿没有 ──────────────
+    n_target = len(target.slides)
+    n_source = len(source.slides)
+    if n_target > n_source:
+        # demo 多出的页面位于"最后一页数据页"和"感谢观看"之间
+        # 例: draft=11(1-10数据+结尾), demo=14(1-10数据+3扩展+结尾)
+        # 需删除 demo 的第 n_source-1 页到第 n_target-2 页 (0-indexed)
+        # 即保留 demo[0..n_source-2] + demo[n_target-1(结尾)]
+        extra_count = n_target - n_source
+        print(f'  ⚠ 模板有 {n_target} 页，数据稿有 {n_source} 页，删除多余的 {extra_count} 页扩展页')
+        # 从后往前删除，避免索引偏移
+        from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+        sldIdLst = target.slides._sldIdLst
+        slides_list = list(sldIdLst)
+        for idx in range(n_target - 2, n_source - 2, -1):
+            # 删除 slides_list[idx]（从最后一页数据页之后到结尾之前）
+            el = slides_list[idx]
+            rId = el.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id')
+            try:
+                target.part.drop_rel(rId)
+            except Exception:
+                pass
+            sldIdLst.remove(el)
+            print(f'    - 已删除模板第 {idx + 1} 页')
+
     n = min(len(target.slides), len(source.slides))
     for i in range(n):
         print(f'  - 第 {i + 1}/{n} 页')
