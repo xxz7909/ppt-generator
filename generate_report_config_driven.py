@@ -421,19 +421,28 @@ def _sync_combo_chart(target_shape, src_shape):
         bar_chart = pa.find(f'{{{C_NS}}}barChart')
         line_chart = pa.find(f'{{{C_NS}}}lineChart')
 
-        def _replace_cache(ser_elem, categories, values, is_num=False):
-            """替换一个 <c:ser> 下的 strCache (cat) 和 numCache (val)"""
+        def _replace_cache(ser_elem, categories, values, ser_col='B'):
+            """替换一个 <c:ser> 下的 strCache (cat) 和 numCache (val)，
+            同时更新公式引用范围以匹配新数据长度。"""
+            n_cat = len(categories)
+            n_val = len(values)
+            bottom_row = n_cat + 1  # 数据从第2行开始
+
             # 替换分类 strCache
             cat_elem = ser_elem.find(f'{{{C_NS}}}cat')
             if cat_elem is not None:
                 str_ref = cat_elem.find(f'{{{C_NS}}}strRef')
                 if str_ref is not None:
+                    # 更新公式引用范围
+                    f_elem = str_ref.find(f'{{{C_NS}}}f')
+                    if f_elem is not None:
+                        f_elem.text = f'Sheet1!$A$2:$A${bottom_row}'
                     old_cache = str_ref.find(f'{{{C_NS}}}strCache')
                     if old_cache is not None:
                         str_ref.remove(old_cache)
                     new_cache = etree.SubElement(str_ref, f'{{{C_NS}}}strCache')
                     pt_count = etree.SubElement(new_cache, f'{{{C_NS}}}ptCount')
-                    pt_count.set('val', str(len(categories)))
+                    pt_count.set('val', str(n_cat))
                     for idx, cat_text in enumerate(categories):
                         pt = etree.SubElement(new_cache, f'{{{C_NS}}}pt')
                         pt.set('idx', str(idx))
@@ -445,6 +454,10 @@ def _sync_combo_chart(target_shape, src_shape):
             if val_elem is not None:
                 num_ref = val_elem.find(f'{{{C_NS}}}numRef')
                 if num_ref is not None:
+                    # 更新公式引用范围
+                    f_elem = num_ref.find(f'{{{C_NS}}}f')
+                    if f_elem is not None:
+                        f_elem.text = f'Sheet1!${ser_col}$2:${ser_col}${bottom_row}'
                     old_cache = num_ref.find(f'{{{C_NS}}}numCache')
                     if old_cache is not None:
                         num_ref.remove(old_cache)
@@ -452,27 +465,90 @@ def _sync_combo_chart(target_shape, src_shape):
                     fmt = etree.SubElement(new_cache, f'{{{C_NS}}}formatCode')
                     fmt.text = '0.000'
                     pt_count = etree.SubElement(new_cache, f'{{{C_NS}}}ptCount')
-                    pt_count.set('val', str(len(values)))
+                    pt_count.set('val', str(n_val))
                     for idx, val in enumerate(values):
                         pt = etree.SubElement(new_cache, f'{{{C_NS}}}pt')
                         pt.set('idx', str(idx))
                         v_elem = etree.SubElement(pt, f'{{{C_NS}}}v')
                         v_elem.text = str(val) if val is not None else '0'
 
-        # 替换 barChart 数据
+        # 替换 barChart 数据（B列）
         if bar_chart is not None:
             bar_ser = bar_chart.find(f'{{{C_NS}}}ser')
             if bar_ser is not None:
-                _replace_cache(bar_ser, src_categories, src_bar_vals)
+                _replace_cache(bar_ser, src_categories, src_bar_vals, ser_col='B')
 
-        # 替换 lineChart 数据
+        # 替换 lineChart 数据（C列）
         if line_chart is not None:
             line_ser = line_chart.find(f'{{{C_NS}}}ser')
             if line_ser is not None:
-                _replace_cache(line_ser, src_categories, src_line_vals)
+                _replace_cache(line_ser, src_categories, src_line_vals, ser_col='C')
+
+        # --- 同步嵌入式 Excel 工作簿 ---
+        # 仅更新 XML cache 不够：点击"编辑数据"时 PowerPoint 会打开嵌入的 xlsx，
+        # 如果 xlsx 仍是 demo 旧数据，关闭后图表会被刷回 demo 值。
+        _update_combo_chart_xlsx(target_shape, src_categories,
+                                src_bar_vals, src_line_vals)
 
     except (AttributeError, TypeError) as e:
         print(f'[WARN] _sync_combo_chart error: {e}')
+
+
+def _update_combo_chart_xlsx(target_shape, categories, bar_vals, line_vals):
+    """更新组合图表的嵌入式 Excel 工作簿，使"编辑数据"显示正确值。
+
+    布局: A列=分类, B列=bar系列(市场份额%), C列=line系列(收视率)
+    """
+    import io
+    try:
+        from xlsxwriter import Workbook as XlsxWorkbook
+    except ImportError:
+        return  # xlsxwriter 不可用则跳过
+
+    try:
+        chart_obj = target_shape.chart
+
+        # 读取系列名称（从 XML cache 或 fallback）
+        C_NS = 'http://schemas.openxmlformats.org/drawingml/2006/chart'
+        cs = chart_obj._chartSpace
+        pa = cs.find(f'.//{{{C_NS}}}plotArea')
+        bar_name = '市场份额(%)'
+        line_name = '收视率(%)'
+        for chart_elem_tag in ('barChart', 'lineChart'):
+            chart_elem = pa.find(f'{{{C_NS}}}{chart_elem_tag}')
+            if chart_elem is not None:
+                ser = chart_elem.find(f'{{{C_NS}}}ser')
+                if ser is not None:
+                    tx = ser.find(f'{{{C_NS}}}tx')
+                    if tx is not None:
+                        v_elem = tx.find(f'.//{{{C_NS}}}v')
+                        if v_elem is not None and v_elem.text:
+                            if chart_elem_tag == 'barChart':
+                                bar_name = v_elem.text
+                            else:
+                                line_name = v_elem.text
+
+        # 生成 xlsx blob
+        xlsx_buf = io.BytesIO()
+        wb = XlsxWorkbook(xlsx_buf, {'in_memory': True})
+        ws = wb.add_worksheet()
+        # 写表头
+        ws.write(0, 0, '')           # A1 空
+        ws.write(0, 1, bar_name)     # B1 bar系列名
+        ws.write(0, 2, line_name)    # C1 line系列名
+        # 写数据
+        for i, cat in enumerate(categories):
+            ws.write(i + 1, 0, cat)
+            ws.write(i + 1, 1, bar_vals[i] if i < len(bar_vals) else 0)
+            ws.write(i + 1, 2, line_vals[i] if i < len(line_vals) else 0)
+        wb.close()
+        xlsx_blob = xlsx_buf.getvalue()
+
+        # 更新嵌入式 xlsx part
+        chart_obj._workbook.update_from_xlsx_blob(xlsx_blob)
+
+    except Exception as e:
+        print(f'[WARN] _update_combo_chart_xlsx: {e}')
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -515,7 +591,7 @@ def _change_desc(pct, up_word='提升', down_word='下降', flat_word='基本持
 
 def _rank_change_desc(change):
     if change > 0:
-        return f'上升{change}位'
+        return f'提升{change}位'
     elif change < 0:
         return f'下滑{abs(change)}位'
     return '保持不变'
@@ -1555,8 +1631,8 @@ def _group_programs(programs, max_cols=20):
             continue
         end_m = _parse_time_minutes(p.end_time)
 
-        # 首播/重播判定：下午剧场(13:30)起到晚间节目(22:30)止为首播，其余为重播
-        is_premiere = (13 * 60 + 30 <= start_m < 22 * 60 + 30)
+        # 首播/重播判定：根据串单P列（首重播）实际数据
+        is_premiere = (getattr(p, 'premiere_type', '') == '首播')
         suffix = '（首播）' if is_premiere else '（重播）'
 
         # 不加"电视剧："前缀，只保留节目名
@@ -1781,8 +1857,57 @@ def _fix_minute_chart_page(target_slide, data, metric='rating'):
 
     chart_duration = chart_end_min - chart_start_min
 
-    # 表头/分隔线表格：保留模板原始位置和列宽，不做重新定位
-    # （模板已手动调好对齐，重新计算会导致列太窄、文字换行）
+    # ── 表头 + 分隔线表格：按时段边界严格对齐图表横坐标 ──
+    if plot_left is not None and chart_duration > 0:
+        # 各时段边界在图表坐标系中的 EMU 位置
+        boundaries_min = [s[1] for s in _FIXED_TIME_SLOTS] + [_FIXED_TIME_SLOTS[-1][2]]
+        boundary_pos = [
+            plot_left + int((t - chart_start_min) / chart_duration * plot_width)
+            for t in boundaries_min
+        ]
+
+        for tbl_shape in (header_tbl_shape, divider_tbl_shape):
+            if tbl_shape is None:
+                continue
+            orig_left = tbl_shape.left
+            orig_width = tbl_shape.width
+            tbl_obj = tbl_shape.table
+            n = min(len(tbl_obj.columns), len(_FIXED_TIME_SLOTS))
+            for ci in range(n):
+                if ci == 0:
+                    w = boundary_pos[1] - orig_left
+                elif ci == n - 1:
+                    w = (orig_left + orig_width) - boundary_pos[ci]
+                else:
+                    w = boundary_pos[ci + 1] - boundary_pos[ci]
+                tbl_obj.columns[ci].width = max(w, 50000)
+
+        # 表头表格：消除单元格内边距，确保窄列文字不换行
+        if header_tbl_shape is not None:
+            tbl_obj = header_tbl_shape.table
+            n = min(len(tbl_obj.columns), len(_FIXED_TIME_SLOTS))
+            for ci in range(n):
+                tc = tbl_obj.cell(0, ci)._tc
+                tc_body = tc.find(f'.//{{{a_ns}}}txBody')
+                if tc_body is None:
+                    continue
+                bodyPr = tc_body.find(f'{{{a_ns}}}bodyPr')
+                if bodyPr is None:
+                    bodyPr = etree.SubElement(tc_body, f'{{{a_ns}}}bodyPr')
+                    tc_body.insert(0, bodyPr)
+                bodyPr.set('lIns', '0')
+                bodyPr.set('rIns', '0')
+
+    # ── 确保节目表格在分隔线表格之上（z-order）──
+    if prog_tbl_shape and divider_tbl_shape:
+        parent = prog_tbl_shape._element.getparent()
+        prog_elem = prog_tbl_shape._element
+        divider_elem = divider_tbl_shape._element
+        # 在 DOM 中后出现的形状渲染在上层；确保 prog 在 divider 之后
+        prog_siblings = list(parent)
+        if prog_siblings.index(prog_elem) < prog_siblings.index(divider_elem):
+            parent.remove(prog_elem)
+            divider_elem.addnext(prog_elem)
 
     # ── 更新节目名称表格 ──
     if prog_tbl_shape and prog_groups:
@@ -2125,6 +2250,31 @@ def generate_report_config_driven(excel_path, template_path, output_path):
     print('[3/5] XML 级精确回填...')
     target = Presentation(output_path)
     source = Presentation(draft_path)
+
+    # ── 页数对齐：demo 可能有日报扩展页而数据稿没有 ──────────────
+    n_target = len(target.slides)
+    n_source = len(source.slides)
+    if n_target > n_source:
+        # demo 多出的页面位于"最后一页数据页"和"感谢观看"之间
+        # 例: draft=11(1-10数据+结尾), demo=14(1-10数据+3扩展+结尾)
+        # 需删除 demo 的第 n_source-1 页到第 n_target-2 页 (0-indexed)
+        # 即保留 demo[0..n_source-2] + demo[n_target-1(结尾)]
+        extra_count = n_target - n_source
+        print(f'  ⚠ 模板有 {n_target} 页，数据稿有 {n_source} 页，删除多余的 {extra_count} 页扩展页')
+        # 从后往前删除，避免索引偏移
+        from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+        sldIdLst = target.slides._sldIdLst
+        slides_list = list(sldIdLst)
+        for idx in range(n_target - 2, n_source - 2, -1):
+            # 删除 slides_list[idx]（从最后一页数据页之后到结尾之前）
+            el = slides_list[idx]
+            rId = el.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id')
+            try:
+                target.part.drop_rel(rId)
+            except Exception:
+                pass
+            sldIdLst.remove(el)
+            print(f'    - 已删除模板第 {idx + 1} 页')
 
     n = min(len(target.slides), len(source.slides))
     for i in range(n):

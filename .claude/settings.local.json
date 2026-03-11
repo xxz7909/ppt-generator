@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"python-pptx\\\\|replace_data\\\\|ChartData\\\\|embedded\" d:/Workspace/ppt-generator/*.py)",
+      "Bash(grep -rn \"xlsx\\\\|worksheet\\\\|EmbeddedPackagePart\\\\|chartsheet\" d:/Workspace/ppt-generator/*.py)",
+      "Bash(python -c \"import pptx; import os; print\\(os.path.dirname\\(pptx.__file__\\)\\)\")",
+      "Bash(python -X utf8 -c \":*)",
+      "Bash(python -X utf8 generate_report_config_driven.py \"input_data/20260215CCTV-17日数据（简版）.xlsx\")",
+      "Bash(ls output_ppt/*demo*)",
+      "Bash(python -X utf8 generate_report_config_driven.py \"input_data/20260215CCTV-17日数据（简版）.xlsx\" --template \"output_ppt/CCTV-17频道收视日报 0210 demo（简版）.pptx\" --output \"output_ppt/test_fix.pptx\")",
+      "Bash(python -X utf8 generate_report_config_driven.py \"input_data/20260227CCTV-17日数据.xlsx\" --template \"output_ppt/CCTV-17频道收视日报 0210 demo（简版）.pptx\" --output \"output_ppt/test_0227.pptx\")",
+      "Bash(ls input_data/*.xlsx)",
+      "Bash(for f in \"20260128CCTV-17日数据.xlsx\" \"20260202CCTV-17日数据.xlsx\" \"20260215CCTV-17日数据 补充首重播.xlsx\" \"20260215CCTV-17日数据（简版）.xlsx\" \"20260222CCTV-17日数据.xlsx\" \"20260227CCTV-17日数据.xlsx\")",
+      "Bash(do echo \"========================================\")",
+      "Bash(echo \"FILE: $f\")",
+      "Bash(done)"
+    ]
+  }
+}

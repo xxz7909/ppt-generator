@@ -90,6 +90,7 @@ class ProgramItem:
     subcategory: str = ""
     market_share: float = 0
     rating: float = 0
+    premiere_type: str = ""  # 首重播列："首播" 或空
 
 
 @dataclass
@@ -615,6 +616,8 @@ def _read_programs(ws, data: ReportData):
         item.subcategory = _safe_str(vals[10])
         item.market_share = _safe_float(vals[11])
         item.rating = _safe_float(vals[12])
+        if len(vals) > 15 and vals[15] is not None:
+            item.premiere_type = _safe_str(vals[15])  # P列：首重播
         data.programs.append(item)
 
 
@@ -764,6 +767,12 @@ def _read_premiere_from_schedule(ws, data: ReportData):
                 start_t = raw_start.time()
             elif isinstance(raw_start, _dt.time):
                 start_t = raw_start
+            elif isinstance(raw_start, str):
+                parts = raw_start.strip().split(':')
+                if len(parts) >= 2:
+                    start_t = _dt.time(int(parts[0]), int(parts[1]))
+                else:
+                    continue
             else:
                 continue
             if start_t < cutoff_start:
@@ -777,18 +786,30 @@ def _read_premiere_from_schedule(ws, data: ReportData):
         if raw_start is None:
             continue
         if isinstance(raw_start, _dt.datetime):
-            start_t = raw_start.time()
+            start_str = raw_start.strftime('%H:%M')
         elif isinstance(raw_start, _dt.time):
-            start_t = raw_start
+            start_str = raw_start.strftime('%H:%M')
+        elif isinstance(raw_start, str):
+            # 字符串格式: "HH:MM:SS" 或 "HH:MM"
+            parts = raw_start.strip().split(':')
+            if len(parts) >= 2:
+                start_str = f'{int(parts[0]):02d}:{int(parts[1]):02d}'
+            else:
+                continue
         else:
             continue
-        start_str = start_t.strftime('%H:%M')
 
         raw_end = r[7] if len(r) > 7 else None
         if isinstance(raw_end, _dt.datetime):
             end_str = raw_end.strftime('%H:%M')
         elif isinstance(raw_end, _dt.time):
             end_str = raw_end.strftime('%H:%M')
+        elif isinstance(raw_end, str):
+            parts = raw_end.strip().split(':')
+            if len(parts) >= 2:
+                end_str = f'{int(parts[0]):02d}:{int(parts[1]):02d}'
+            else:
+                end_str = raw_end
         else:
             end_str = _time_to_str(raw_end)
 
@@ -799,9 +820,11 @@ def _read_premiere_from_schedule(ws, data: ReportData):
         item.share = _safe_float(r[11]) if len(r) > 11 else 0
         item.prev_day_rating = _safe_float(r[13]) if len(r) > 13 else 0
         item.prev_day_share = _safe_float(r[14]) if len(r) > 14 else 0
-        # 前1个月数据（P、Q列，可选）
-        item.period_rating = _safe_float(r[15]) if len(r) > 15 else 0
-        item.period_share = _safe_float(r[16]) if len(r) > 16 else 0
+        # 前1个月数据（可选，仅当对应列不是首重播标注列时才读取）
+        if len(r) > 15 and premiere_col != 15:
+            item.period_rating = _safe_float(r[15])
+        if len(r) > 16 and premiere_col != 16:
+            item.period_share = _safe_float(r[16])
         # 计算变化（当日 vs 前一天）
         if item.prev_day_rating and item.prev_day_rating > 0:
             item.rating_change = round((item.rating - item.prev_day_rating) / item.prev_day_rating * 100)
