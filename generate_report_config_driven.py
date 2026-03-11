@@ -1547,8 +1547,6 @@ def _group_programs(programs, max_cols=20):
 
     valid = []
     for p in programs:
-        if p.duration < 10:
-            continue
         if p.name.strip() in _HIDDEN_NAMES:
             continue
         start_m = _parse_time_minutes(p.start_time)
@@ -1587,13 +1585,13 @@ def _group_programs(programs, max_cols=20):
             consecutive.append(dict(v))
     valid = consecutive
 
-    # 合并短节目 (< 5 min) 到相邻节目
+    # 合并短节目 (< 10 min) 到相邻节目
     _MAX_MERGE_LEN = 20   # 合并后名称上限（防止垂直文本溢出重叠）
     merged = []
     i = 0
     while i < len(valid):
         grp = dict(valid[i])
-        while grp['duration'] < 5 and i + 1 < len(valid):
+        while grp['duration'] < 10 and i + 1 < len(valid):
             i += 1
             nxt = valid[i]
             if len(grp['name']) + len(nxt['name']) < _MAX_MERGE_LEN:
@@ -1657,6 +1655,43 @@ _FIXED_TIME_SLOTS = [
 ]
 
 
+def _resize_prog_table(tbl, old_ncols, new_ncols, a_ns):
+    """动态调整节目名称表格的列数，通过克隆/删除最后一列实现。"""
+    from copy import deepcopy
+    if new_ncols == old_ncols:
+        return
+    tbl_elem = tbl._tbl
+    tbl_grid = tbl_elem.find(f'{{{a_ns}}}tblGrid')
+
+    if new_ncols > old_ncols:
+        # 需要添加列：克隆最后一个 gridCol 和每行最后一个 tc
+        last_grid_col = tbl_grid.findall(f'{{{a_ns}}}gridCol')[-1]
+        rows = tbl_elem.findall(f'{{{a_ns}}}tr')
+        for _ in range(new_ncols - old_ncols):
+            new_col = deepcopy(last_grid_col)
+            tbl_grid.append(new_col)
+            for tr in rows:
+                last_tc = tr.findall(f'{{{a_ns}}}tc')[-1]
+                new_tc = deepcopy(last_tc)
+                # 清空文本内容
+                for body in new_tc.findall(f'.//{{{a_ns}}}txBody'):
+                    for p in body.findall(f'{{{a_ns}}}p'):
+                        for r in p.findall(f'{{{a_ns}}}r'):
+                            t = r.find(f'{{{a_ns}}}t')
+                            if t is not None:
+                                t.text = ''
+                tr.append(new_tc)
+    else:
+        # 需要删除多余列：从末尾移除
+        grid_cols = tbl_grid.findall(f'{{{a_ns}}}gridCol')
+        rows = tbl_elem.findall(f'{{{a_ns}}}tr')
+        for _ in range(old_ncols - new_ncols):
+            tbl_grid.remove(grid_cols.pop())
+            for tr in rows:
+                tcs = tr.findall(f'{{{a_ns}}}tc')
+                tr.remove(tcs[-1])
+
+
 def _fix_minute_chart_page(target_slide, data, metric='rating'):
     """
     修正分分钟收视率/市场份额页的 3 个覆盖表格：
@@ -1673,7 +1708,7 @@ def _fix_minute_chart_page(target_slide, data, metric='rating'):
     slot_durations = [end - start for _, start, end in _FIXED_TIME_SLOTS]
 
     # ── 节目分组 ──
-    prog_groups = _group_programs(programs, max_cols=20)
+    prog_groups = _group_programs(programs, max_cols=35)
     prog_durations = [g['duration'] for g in prog_groups]
 
     # ── 找到 3 个表格并分类 ──
@@ -1686,7 +1721,7 @@ def _fix_minute_chart_page(target_slide, data, metric='rating'):
             continue
         tbl = shp.table
         ncols = len(tbl.columns)
-        if ncols in (20, 21):
+        if ncols >= 15 and ncols != 8:  # 节目名表格（模板为20/21列）
             prog_tbl_shape = shp
         elif ncols == 8:
             cell_text = tbl.rows[0].cells[0].text.strip()
@@ -1771,14 +1806,19 @@ def _fix_minute_chart_page(target_slide, data, metric='rating'):
             prog_total_w = prog_tbl_shape.width
 
         # 判断是否有前导空列（21 列 = 1 spacer + 20 program）
-        has_spacer = (ncols == 21)
+        has_spacer = (ncols >= 21)  # 第一列为spacer空列
         data_start = 1 if has_spacer else 0
         data_cols = ncols - data_start
 
         if has_spacer:
             tbl.columns[0].width = 0
 
-        n = min(data_cols, len(prog_groups))
+        # 动态调整表格列数以匹配节目分组数
+        needed_cols = data_start + len(prog_groups)
+        _resize_prog_table(tbl, ncols, needed_cols, a_ns)
+        data_cols = len(prog_groups)
+
+        n = len(prog_groups)
         widths = _proportional_widths(prog_durations[:n], prog_total_w)
 
         # 首播节目颜色：收视率页=橙色, 市场份额页=绿色
